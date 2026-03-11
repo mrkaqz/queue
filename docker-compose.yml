@@ -1,6 +1,8 @@
 services:
   queue-app:
-    build: .
+    build:
+      context: .
+      platform: linux/arm/v7   # ARM32 (Raspberry Pi 2/3/4 32-bit OS)
     restart: unless-stopped
     ports:
       - "8080:8080"   # HTTP
