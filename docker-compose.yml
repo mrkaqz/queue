@@ -6,6 +6,18 @@ services:
       - "8080:8080"   # HTTP
       - "8443:8443"   # HTTPS (required for PWA Web Push)
     volumes:
-      - ./data:/app/data
+      - queue_data:/app/data   # named volume — created automatically by Docker
     environment:
       - VAPID_EMAIL=admin@yourshop.com
+
+volumes:
+  queue_data:
+
+# ── Bind mount alternative ────────────────────────────────────────────────────
+# If you prefer direct filesystem access (e.g. easy backup on Synology),
+# replace the named volume above with a bind mount:
+#
+#   volumes:
+#     - ./data:/app/data        ← create the ./data folder first
+#
+# And remove the top-level `volumes:` block.

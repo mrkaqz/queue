@@ -40,7 +40,7 @@ A lightweight, self-hosted queue management system designed for small businesses
 
 > **Architectures:** pre-built images are available for `linux/amd64` and `linux/arm64`.
 >
-> **Synology NAS:** Before starting the project in Container Manager, create the `data` folder in File Station under your project directory (e.g. `docker/queue/data`). Docker bind mounts will fail if the host folder does not exist.
+> **Synology NAS:** The default config uses a named volume (created automatically). If you switch to a bind mount (`./data:/app/data`), create the `data` folder in File Station first.
 
 ---
 
@@ -71,17 +71,14 @@ services:
       - "8080:8080"
       - "8443:8443"
     volumes:
-      - ./data:/app/data
+      - queue_data:/app/data   # named volume — created automatically
     restart: unless-stopped
+
+volumes:
+  queue_data:
 ```
 
-Create the data directory first (Docker bind mounts require it to exist):
-
-```bash
-mkdir -p data
-```
-
-Then run:
+Then run — no folder setup needed:
 
 ```bash
 docker compose up -d
@@ -106,7 +103,6 @@ docker compose pull && docker compose up -d
 ```bash
 git clone https://github.com/mrkaqz/queue.git
 cd queue
-mkdir -p data
 docker compose up -d
 ```
 
