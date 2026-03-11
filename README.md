@@ -29,11 +29,21 @@ A lightweight, self-hosted queue management system designed for small businesses
 
 ---
 
+## Compatible Platforms
+
+| OS | Docker | Python (no Docker) |
+|---|---|---|
+| Windows 10/11 | ✅ Docker Desktop | ✅ Python 3.11+ |
+| macOS (Intel & Apple Silicon) | ✅ Docker Desktop | ✅ Python 3.11+ |
+| Linux (Ubuntu, Debian, etc.) | ✅ Docker Engine | ✅ Python 3.11+ |
+
+---
+
 ## Quick Start
 
-### Docker (recommended)
+### Option 1 — Docker (recommended, all platforms)
 
-**Requirements:** Docker & Docker Compose
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/macOS) or [Docker Engine](https://docs.docker.com/engine/install/) (Linux), then:
 
 ```bash
 git clone https://github.com/mrkaqz/queue.git
@@ -47,18 +57,46 @@ The app will be available at:
 
 > A self-signed SSL certificate is auto-generated on first run inside the container.
 
-### Local Development (no Docker)
+---
 
-**Requirements:** Python 3.11+
+### Option 2 — Python directly (no Docker)
+
+**Requirements:** Python 3.11+ — [python.org/downloads](https://www.python.org/downloads/)
+
+#### macOS / Linux
 
 ```bash
 git clone https://github.com/mrkaqz/queue.git
 cd queue
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload
 ```
+
+#### Windows (Command Prompt)
+
+```cmd
+git clone https://github.com/mrkaqz/queue.git
+cd queue
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload
+```
+
+#### Windows (PowerShell)
+
+```powershell
+git clone https://github.com/mrkaqz/queue.git
+cd queue
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8080 --reload
+```
+
+Then open `http://localhost:8080` in your browser.
 
 ---
 
