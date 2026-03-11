@@ -1,0 +1,21 @@
+{
+  "name": "Queue",
+  "short_name": "Queue",
+  "description": "Self-hosted queue management",
+  "start_url": "/status",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

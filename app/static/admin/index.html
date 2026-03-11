@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Queue</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #f1f5f9;
+      color: #1e293b;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* Nav */
+    nav {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    nav .brand { font-size: 1.2rem; font-weight: 700; }
+    nav .links a {
+      color: #94a3b8;
+      text-decoration: none;
+      margin-left: 20px;
+      font-size: 0.9rem;
+    }
+    nav .links a:hover { color: #f8fafc; }
+
+    /* Status strip */
+    #status-strip {
+      background: #1e3a5f;
+      color: #e2e8f0;
+      padding: 16px 24px;
+      display: flex;
+      gap: 48px;
+      align-items: center;
+    }
+    .stat { display: flex; flex-direction: column; gap: 4px; }
+    .stat .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+    .stat .value { font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; color: #f8fafc; }
+    #current-val { color: #60a5fa; }
+    #waiting-val  { color: #f59e0b; }
+
+    /* Connection badge */
+    #conn-badge {
+      margin-left: auto;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    #conn-badge.connected    { background: #166534; color: #bbf7d0; }
+    #conn-badge.disconnected { background: #7f1d1d; color: #fecaca; }
+
+    /* Main layout */
+    main { max-width: 960px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+
+    /* Card */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 24px;
+    }
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 16px;
+    }
+
+    /* Action buttons */
+    #actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary  { background: #2563eb; color: #fff; flex: 1; min-width: 160px; font-size: 1.1rem; padding: 16px 24px; }
+    .btn-success  { background: #16a34a; color: #fff; }
+    .btn-warning  { background: #d97706; color: #fff; }
+    .btn-danger   { background: #dc2626; color: #fff; }
+    .btn-neutral  { background: #e2e8f0; color: #1e293b; }
+
+    .btn-primary:hover  { background: #1d4ed8; }
+    .btn-success:hover  { background: #15803d; }
+    .btn-warning:hover  { background: #b45309; }
+    .btn-danger:hover   { background: #b91c1c; }
+    .btn-neutral:hover  { background: #cbd5e1; }
+
+    /* Queue table */
+    #queue-table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 2px solid #e2e8f0;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-waiting  { background: #fef3c7; color: #92400e; }
+    .badge-serving  { background: #dbeafe; color: #1e40af; }
+    .badge-served   { background: #dcfce7; color: #166534; }
+    .badge-skipped  { background: #fee2e2; color: #991b1b; }
+    .badge-held     { background: #ede9fe; color: #5b21b6; }
+
+    #empty-row td { text-align: center; color: #94a3b8; padding: 32px; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="brand" id="nav-shop-name">Queue Admin</div>
+  <div class="links">
+    <a href="/tv" target="_blank">📺 TV</a>
+    <a href="/settings">⚙️ Settings</a>
+  </div>
+</nav>
+
+<div id="status-strip">
+  <div class="stat">
+    <div class="label">กำลังให้บริการ · Serving</div>
+    <div class="value" id="current-val">—</div>
+  </div>
+  <div class="stat">
+    <div class="label">ถัดไป · Next</div>
+    <div class="value" id="next-val">—</div>
+  </div>
+  <div class="stat">
+    <div class="label">รอคิว · Waiting</div>
+    <div class="value" id="waiting-val">0</div>
+  </div>
+  <div id="conn-badge" class="disconnected">Offline</div>
+</div>
+
+<main>
+  <div class="card">
+    <div class="card-title">Actions</div>
+    <div id="actions">
+      <button class="btn btn-primary" onclick="action('call-next')">▶ Call Next</button>
+      <button class="btn btn-success" onclick="action('add')">＋ Add Queue</button>
+      <button class="btn btn-neutral" onclick="action('remove-last')">－ Remove Last</button>
+      <button class="btn btn-warning" onclick="action('recall')">↩ Recall</button>
+      <button class="btn btn-neutral" onclick="action('skip')">⏭ Skip</button>
+      <button class="btn btn-neutral" onclick="action('hold')">⏸ Hold</button>
+      <button class="btn btn-danger" onclick="confirmReset()">✕ Reset</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Queue List</div>
+    <div id="queue-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Number</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Called</th>
+          </tr>
+        </thead>
+        <tbody id="queue-body">
+          <tr id="empty-row"><td colspan="5">No queue entries</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  const currentEl  = document.getElementById('current-val');
+  const nextEl     = document.getElementById('next-val');
+  const waitingEl  = document.getElementById('waiting-val');
+  const connBadge  = document.getElementById('conn-badge');
+  const shopNameEl = document.getElementById('nav-shop-name');
+  const tbody      = document.getElementById('queue-body');
+  const emptyRow   = document.getElementById('empty-row');
+  const toast      = document.getElementById('toast');
+
+  let toastTimer;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  // ── API ───────────────────────────────────────────────────────────────────
+  async function action(endpoint) {
+    try {
+      const res = await fetch(`/api/queue/${endpoint}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.message) showToast(data.message);
+      else if (endpoint === 'remove-last' && data.number_display) showToast(`Removed: ${data.number_display}`);
+      else if (data.number_display) showToast(`Called: ${data.number_display}`);
+      await refreshList();
+    } catch (e) {
+      showToast('Error: ' + e.message);
+    }
+  }
+
+  function confirmReset() {
+    if (confirm('Reset all queues? This cannot be undone.')) action('reset');
+  }
+
+  async function refreshList() {
+    try {
+      const [listRes, statusRes] = await Promise.all([
+        fetch('/api/queue/list'),
+        fetch('/api/queue/status'),
+      ]);
+      const list   = await listRes.json();
+      const status = await statusRes.json();
+
+      currentEl.textContent = status.current || '—';
+      nextEl.textContent    = status.next    || '—';
+      waitingEl.textContent = status.waiting ?? '0';
+
+      if (!list.length) {
+        tbody.innerHTML = '';
+        tbody.appendChild(emptyRow);
+        return;
+      }
+
+      tbody.innerHTML = list.map(entry => `
+        <tr>
+          <td>${entry.id}</td>
+          <td><strong>${entry.number_display}</strong></td>
+          <td><span class="badge badge-${entry.status}">${entry.status}</span></td>
+          <td>${fmtTime(entry.created_at)}</td>
+          <td>${entry.called_at ? fmtTime(entry.called_at) : '—'}</td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts.replace(' ', 'T'));
+    return isNaN(d) ? ts : d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+  let ws;
+  function connect() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+    ws.onopen = () => {
+      connBadge.textContent = 'Live';
+      connBadge.className = 'connected';
+    };
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.event === 'init') {
+        shopNameEl.textContent = msg.shop_name || 'Queue Admin';
+        currentEl.textContent  = msg.status?.current || '—';
+        nextEl.textContent     = msg.status?.next    || '—';
+        waitingEl.textContent  = msg.status?.waiting ?? '0';
+      }
+      // Refresh list on any queue event
+      if (msg.event?.startsWith('queue_') || msg.event === 'init') {
+        refreshList();
+      }
+      if (msg.event === 'settings_updated') {
+        shopNameEl.textContent = msg.shop_name || 'Queue Admin';
+      }
+    };
+
+    ws.onclose = () => {
+      connBadge.textContent = 'Offline';
+      connBadge.className = 'disconnected';
+      setTimeout(connect, 3000);
+    };
+    ws.onerror = () => ws.close();
+  }
+
+  refreshList();
+  connect();
+</script>
+</body>
+</html>

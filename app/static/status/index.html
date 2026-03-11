@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Queue Status</title>
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#2563eb" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+    header p { font-size: 0.9rem; color: #64748b; margin-top: 4px; }
+
+    /* Queue number lookup */
+    #lookup-card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #lookup-card label { font-size: 0.875rem; color: #94a3b8; font-weight: 600; }
+    #lookup-card input[type="number"] {
+      background: #0f172a;
+      border: 2px solid #334155;
+      border-radius: 10px;
+      color: #f8fafc;
+      font-size: 2rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 16px;
+      width: 100%;
+      -moz-appearance: textfield;
+    }
+    #lookup-card input::-webkit-inner-spin-button,
+    #lookup-card input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    #lookup-card input:focus { outline: none; border-color: #2563eb; }
+    #lookup-btn {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #lookup-btn:hover { background: #1d4ed8; }
+
+    /* Status card */
+    #status-card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 400px;
+      margin-top: 20px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      text-align: center;
+    }
+    #status-card.visible { display: flex; }
+
+    #my-number-display {
+      font-size: 5rem;
+      font-weight: 900;
+      line-height: 1;
+      color: #60a5fa;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #position-text {
+      font-size: 1.1rem;
+      color: #94a3b8;
+    }
+    #position-text .highlight {
+      color: #f8fafc;
+      font-weight: 700;
+      font-size: 1.4rem;
+    }
+
+    /* Status pills */
+    .pill {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .pill-waiting { background: #451a03; color: #fde68a; }
+    .pill-serving { background: #1e3a8a; color: #bfdbfe; animation: pulse 1.5s ease-in-out infinite; }
+    .pill-served  { background: #14532d; color: #bbf7d0; }
+    .pill-skipped { background: #450a0a; color: #fecaca; }
+    .pill-held    { background: #2e1065; color: #e9d5ff; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+    /* Live serving info */
+    #live-info {
+      background: #0f172a;
+      border-radius: 10px;
+      padding: 12px 16px;
+      width: 100%;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+    #live-info .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    #live-info .row:last-child { margin-bottom: 0; }
+    #live-info .val { color: #e2e8f0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    /* Push notifications */
+    #push-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    #push-btn {
+      background: #0f172a;
+      border: 2px solid #334155;
+      border-radius: 10px;
+      color: #94a3b8;
+      padding: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    #push-btn:hover { border-color: #2563eb; color: #f8fafc; }
+    #push-btn.subscribed { border-color: #16a34a; color: #86efac; background: #052e16; }
+    #push-msg { font-size: 0.75rem; color: #475569; text-align: center; }
+
+    /* Currently serving banner */
+    #called-banner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #2563eb;
+      color: #fff;
+      text-align: center;
+      padding: 16px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      transform: translateY(-100%);
+      transition: transform 0.4s ease;
+      z-index: 999;
+    }
+    #called-banner.show { transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1 id="shop-name">Queue Status</h1>
+  <p>ติดตามสถานะคิวของคุณ · Track your queue</p>
+</header>
+
+<div id="lookup-card">
+  <label for="number-input">หมายเลขคิวของคุณ · Your Queue Number</label>
+  <input type="number" id="number-input" placeholder="005" min="1" max="999" />
+  <button id="lookup-btn" onclick="lookupNumber()">ติดตาม · Track</button>
+</div>
+
+<div id="status-card">
+  <div id="my-number-display">—</div>
+  <span class="pill" id="status-pill">waiting</span>
+
+  <div id="position-text">
+    <span id="pos-msg">Loading…</span>
+  </div>
+
+  <div id="live-info">
+    <div class="row">
+      <span>Now serving</span>
+      <span class="val" id="live-current">—</span>
+    </div>
+    <div class="row">
+      <span>Next</span>
+      <span class="val" id="live-next">—</span>
+    </div>
+    <div class="row">
+      <span>Waiting</span>
+      <span class="val" id="live-waiting">—</span>
+    </div>
+  </div>
+
+  <div id="push-section">
+    <button id="push-btn" onclick="togglePush()">🔔 Notify me when called</button>
+    <div id="push-msg">Subscribe to get a notification when your number is called</div>
+  </div>
+</div>
+
+<div id="called-banner">🔔 Your number is being called!</div>
+
+<script>
+  const lookupInput  = document.getElementById('number-input');
+  const statusCard   = document.getElementById('status-card');
+  const myNumberEl   = document.getElementById('my-number-display');
+  const statusPill   = document.getElementById('status-pill');
+  const posMsgEl     = document.getElementById('pos-msg');
+  const liveCurrentEl = document.getElementById('live-current');
+  const liveNextEl    = document.getElementById('live-next');
+  const liveWaitingEl = document.getElementById('live-waiting');
+  const pushBtn      = document.getElementById('push-btn');
+  const pushMsg      = document.getElementById('push-msg');
+  const calledBanner = document.getElementById('called-banner');
+  const shopNameEl   = document.getElementById('shop-name');
+
+  let myNumber = null;
+  let myNumberDisplay = null;
+  let pushSubscription = null;
+  let padding = 3;
+  let currentServingNumber = null;
+
+  // ── Service Worker registration ───────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+  }
+
+  // ── Lookup ────────────────────────────────────────────────────────────────
+  function lookupNumber() {
+    const val = parseInt(lookupInput.value, 10);
+    if (!val || val < 1) return;
+    myNumber = val;
+    myNumberDisplay = String(val).padStart(padding, '0');
+    myNumberEl.textContent = myNumberDisplay;
+    statusCard.classList.add('visible');
+    refreshStatus();
+    // Save to localStorage for re-hydration
+    localStorage.setItem('myQueueNumber', val);
+  }
+
+  lookupInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookupNumber(); });
+
+  // Restore from localStorage
+  const saved = localStorage.getItem('myQueueNumber');
+  if (saved) { lookupInput.value = saved; }
+
+  // ── Status refresh ────────────────────────────────────────────────────────
+  async function refreshStatus() {
+    if (!myNumber) return;
+    try {
+      const [listRes, statusRes, settingsRes] = await Promise.all([
+        fetch('/api/queue/list'),
+        fetch('/api/queue/status'),
+        fetch('/api/settings'),
+      ]);
+      const list     = await listRes.json();
+      const status   = await statusRes.json();
+      const settings = await settingsRes.json();
+
+      padding = parseInt(settings.queue_padding || '3', 10);
+      shopNameEl.textContent = settings.shop_name || 'Queue Status';
+
+      currentServingNumber = status.current_number;
+      liveCurrentEl.textContent = status.current || '—';
+      liveNextEl.textContent    = status.next    || '—';
+      liveWaitingEl.textContent = status.waiting ?? '—';
+
+      const entry = list.find(e => e.number === myNumber);
+      if (!entry) {
+        posMsgEl.innerHTML = 'Number not found in today\'s queue.';
+        setStatusPill('unknown');
+        return;
+      }
+
+      setStatusPill(entry.status);
+      myNumberDisplay = entry.number_display;
+      myNumberEl.textContent = entry.number_display;
+
+      if (entry.status === 'serving') {
+        posMsgEl.innerHTML = '🎉 <span class="highlight">Your number is being served now!</span>';
+      } else if (entry.status === 'waiting') {
+        // Count how many waiting numbers are before mine
+        const waitingBefore = list.filter(e => e.status === 'waiting' && e.number < myNumber).length;
+        if (waitingBefore === 0) {
+          posMsgEl.innerHTML = 'You\'re <span class="highlight">next!</span>';
+        } else {
+          posMsgEl.innerHTML = `<span class="highlight">${waitingBefore}</span> person${waitingBefore > 1 ? 's' : ''} ahead of you`;
+        }
+      } else if (entry.status === 'served') {
+        posMsgEl.innerHTML = '✅ Your number has been served.';
+      } else if (entry.status === 'skipped') {
+        posMsgEl.innerHTML = '⏭ Your number was skipped.';
+      } else if (entry.status === 'held') {
+        posMsgEl.innerHTML = '⏸ Your number is on hold.';
+      }
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function setStatusPill(status) {
+    statusPill.textContent = status;
+    statusPill.className = `pill pill-${status}`;
+  }
+
+  // ── Called banner ─────────────────────────────────────────────────────────
+  function showCalledBanner() {
+    calledBanner.classList.add('show');
+    setTimeout(() => calledBanner.classList.remove('show'), 8000);
+    // Vibrate if supported
+    if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+  }
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+  let ws;
+  function connect() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.event === 'init') {
+        shopNameEl.textContent = msg.shop_name || 'Queue Status';
+        if (myNumber) refreshStatus();
+        return;
+      }
+
+      if (msg.event === 'settings_updated') {
+        shopNameEl.textContent = msg.shop_name || 'Queue Status';
+      }
+
+      if (msg.event?.startsWith('queue_')) {
+        refreshStatus();
+        // Check if my number was just called
+        if (myNumber && msg.event === 'queue_called') {
+          const servedNum = msg.current; // padded string
+          const myPadded = String(myNumber).padStart(padding, '0');
+          if (servedNum === myPadded) showCalledBanner();
+        }
+      }
+    };
+
+    ws.onclose = () => setTimeout(connect, 3000);
+    ws.onerror = () => ws.close();
+  }
+
+  connect();
+
+  // ── Push Notifications ────────────────────────────────────────────────────
+  async function togglePush() {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      pushMsg.textContent = 'Push notifications not supported in this browser.';
+      return;
+    }
+
+    if (pushSubscription) {
+      // Unsubscribe
+      await pushSubscription.unsubscribe();
+      await fetch('/api/push/unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: pushSubscription.endpoint }),
+      });
+      pushSubscription = null;
+      pushBtn.textContent = '🔔 Notify me when called';
+      pushBtn.classList.remove('subscribed');
+      pushMsg.textContent = 'Subscribe to get a notification when your number is called';
+      return;
+    }
+
+    // Subscribe
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      pushMsg.textContent = 'Notification permission denied.';
+      return;
+    }
+
+    try {
+      const vapidRes  = await fetch('/api/push/vapid-key');
+      const { public_key } = await vapidRes.json();
+      if (!public_key) {
+        pushMsg.textContent = 'Push not configured (no VAPID key). Set VAPID email in Settings.';
+        return;
+      }
+
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(public_key),
+      });
+
+      const subJson = sub.toJSON();
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys.p256dh,
+          auth: subJson.keys.auth,
+          queue_number: myNumber,
+        }),
+      });
+
+      pushSubscription = sub;
+      pushBtn.textContent = '🔕 Unsubscribe notifications';
+      pushBtn.classList.add('subscribed');
+      pushMsg.textContent = '✓ You will be notified when your number is called';
+    } catch (err) {
+      pushMsg.textContent = 'Failed to subscribe: ' + err.message;
+    }
+  }
+
+  function _urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  }
+</script>
+</body>
+</html>

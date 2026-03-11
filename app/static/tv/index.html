@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Queue Display</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #ffffff;
+      color: #1e293b;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Top bar */
+    #topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    #shop-name {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #1e293b;
+    }
+    #clock {
+      font-size: 1.8rem;
+      font-weight: 300;
+      color: #64748b;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Main content — serving centered, sidebar pinned right */
+    #main {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Center: NOW SERVING — truly centered on the full page */
+    #current-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 1;
+    }
+    #serving-label {
+      font-size: clamp(1.6rem, 2.8vw, 3rem);
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    #current-number {
+      font-size: clamp(12rem, 28vw, 36rem);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: #1e293b;
+    }
+    #current-number.flash {
+      animation: flash 0.6s ease;
+    }
+    @keyframes flash {
+      0%   { transform: scale(1);    color: #1e293b; }
+      30%  { transform: scale(1.06); color: #2563eb; }
+      100% { transform: scale(1);    color: #1e293b; }
+    }
+
+    /* Right sidebar — pinned to the right edge */
+    #sidebar {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 280px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 36px;
+      padding: 48px 36px;
+      background: #f8fafc;
+      border-left: 1px solid #e2e8f0;
+    }
+
+    /* Info blocks */
+    .info-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .info-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .info-value {
+      font-size: 4.5rem;
+      font-weight: 800;
+      color: #1e293b;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    #waiting-count { color: #d97706; }
+
+    /* QR code */
+    #qr-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    #qr-label {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    #qr-container {
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      padding: 8px;
+      line-height: 0;
+    }
+    #qr-container img,
+    #qr-container canvas {
+      border-radius: 4px;
+      display: block;
+    }
+
+    /* Ticker */
+    #ticker-wrap {
+      height: 56px;
+      background: #2563eb;
+      border-top: none;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+    #ticker-inner {
+      white-space: nowrap;
+      display: inline-block;
+      padding-left: 100%;
+      animation: scroll 30s linear infinite;
+      font-size: 1.2rem;
+      color: #fff;
+      font-weight: 500;
+    }
+    #ticker-inner.paused { animation-play-state: paused; }
+    @keyframes scroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-100%); }
+    }
+    #ticker-wrap.hidden { display: none; }
+
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="shop-name">My Queue</div>
+  <div id="clock">00:00</div>
+</div>
+
+<div id="main">
+  <!-- Left: big serving number -->
+  <div id="current-card">
+    <div id="serving-label">กำลังให้บริการ &nbsp;·&nbsp; NOW SERVING</div>
+    <div id="current-number">—</div>
+  </div>
+
+  <!-- Right: sidebar -->
+  <div id="sidebar">
+    <div class="info-block">
+      <div class="info-label">ถัดไป · NEXT</div>
+      <div class="info-value" id="next-number">—</div>
+    </div>
+    <div class="info-block">
+      <div class="info-label">รอคิว · WAITING</div>
+      <div class="info-value" id="waiting-count">0</div>
+    </div>
+    <div id="qr-wrap">
+      <div id="qr-label">สแกนเพื่อติดตามคิว · Scan to track</div>
+      <div id="qr-container"></div>
+    </div>
+  </div>
+</div>
+
+<div id="ticker-wrap" class="hidden">
+  <span id="ticker-inner"></span>
+</div>
+
+<!-- QR code library (MIT) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+  const currentEl  = document.getElementById('current-number');
+  const nextEl     = document.getElementById('next-number');
+  const waitingEl  = document.getElementById('waiting-count');
+  const shopEl     = document.getElementById('shop-name');
+  const tickerWrap = document.getElementById('ticker-wrap');
+  const tickerEl   = document.getElementById('ticker-inner');
+  const clockEl    = document.getElementById('clock');
+
+  // ── Clock ────────────────────────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    clockEl.textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ── QR code ───────────────────────────────────────────────────────────────
+  let qrInstance = null;
+
+  function buildQR(baseUrl) {
+    const origin = baseUrl.trim().replace(/\/$/, '') || `${location.protocol}//${location.host}`;
+    const statusUrl = `${origin}/status`;
+    const container = document.getElementById('qr-container');
+    container.innerHTML = '';  // clear previous
+    qrInstance = new QRCode(container, {
+      text: statusUrl,
+      width: 160,
+      height: 160,
+      colorDark: '#1e293b',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  }
+
+  // Initial load — fetch base_url from settings
+  fetch('/api/settings')
+    .then(r => r.json())
+    .then(s => buildQR(s.base_url || ''))
+    .catch(() => buildQR(''));
+
+  // ── Audio queue (sequential playback) ────────────────────────────────────
+  let audioQueue = [];
+  let audioPlaying = false;
+
+  function playNext() {
+    if (audioQueue.length === 0) { audioPlaying = false; return; }
+    audioPlaying = true;
+    const url = audioQueue.shift();
+    const audio = new Audio(url);
+    audio.onended = playNext;
+    audio.onerror = playNext;
+    audio.play().catch(playNext);
+  }
+
+  function enqueueAudio(urls) {
+    if (!urls || !urls.length) return;
+    audioQueue.push(...urls);
+    if (!audioPlaying) playNext();
+  }
+
+  // ── Ticker ────────────────────────────────────────────────────────────────
+  function setTicker(text) {
+    if (!text) { tickerWrap.classList.add('hidden'); return; }
+    tickerWrap.classList.remove('hidden');
+    tickerEl.textContent = '  ·  ' + text + '  ·  ' + text;
+  }
+
+  // ── State update ──────────────────────────────────────────────────────────
+  function updateDisplay(status) {
+    currentEl.textContent = status.current || '—';
+    nextEl.textContent    = status.next    || '—';
+    waitingEl.textContent = status.waiting ?? '0';
+  }
+
+  function flashNumber() {
+    currentEl.classList.remove('flash');
+    void currentEl.offsetWidth; // reflow
+    currentEl.classList.add('flash');
+  }
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+  let ws;
+  function connect() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.event === 'init') {
+        updateDisplay(msg.status);
+        shopEl.textContent = msg.shop_name || 'My Queue';
+        setTicker(msg.announcement_message);
+        return;
+      }
+
+      if (msg.event === 'queue_called') {
+        currentEl.textContent = msg.current || '—';
+        nextEl.textContent    = msg.next    || '—';
+        waitingEl.textContent = msg.waiting ?? '0';
+        flashNumber();
+        enqueueAudio(msg.audio_urls);
+        return;
+      }
+
+      if (msg.event === 'queue_recalled') {
+        flashNumber();
+        enqueueAudio(msg.audio_urls);
+        return;
+      }
+
+      if (msg.event === 'queue_skipped') {
+        currentEl.textContent = msg.current || '—';
+        waitingEl.textContent = msg.waiting ?? '0';
+        if (msg.current) {
+          flashNumber();
+          enqueueAudio(msg.audio_urls);
+        }
+        return;
+      }
+
+      if (msg.event === 'queue_added') {
+        waitingEl.textContent = msg.waiting ?? '0';
+        return;
+      }
+
+      if (msg.event === 'queue_reset') {
+        currentEl.textContent = '—';
+        nextEl.textContent    = '—';
+        waitingEl.textContent = '0';
+        return;
+      }
+
+      if (msg.event === 'settings_updated') {
+        shopEl.textContent = msg.shop_name || 'My Queue';
+        setTicker(msg.announcement_message);
+        // Re-fetch full settings to get updated base_url
+        fetch('/api/settings').then(r => r.json()).then(s => buildQR(s.base_url || '')).catch(() => {});
+        return;
+      }
+    };
+
+    ws.onclose = () => setTimeout(connect, 3000);
+    ws.onerror = () => ws.close();
+  }
+
+  connect();
+</script>
+</body>
+</html>

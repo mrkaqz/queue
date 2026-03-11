@@ -1,0 +1,11 @@
+services:
+  queue-app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # HTTP
+      - "8443:8443"   # HTTPS (required for PWA Web Push)
+    volumes:
+      - ./data:/app/data
+    environment:
+      - VAPID_EMAIL=admin@yourshop.com

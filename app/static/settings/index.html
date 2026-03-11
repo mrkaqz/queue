@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — Queue</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #f1f5f9;
+      color: #1e293b;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    nav {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    nav .brand { font-size: 1.2rem; font-weight: 700; }
+    nav .links a { color: #94a3b8; text-decoration: none; margin-left: 20px; font-size: 0.9rem; }
+    nav .links a:hover { color: #f8fafc; }
+
+    main { max-width: 720px; margin: 32px auto; padding: 0 24px; display: flex; flex-direction: column; gap: 24px; }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 24px;
+    }
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #64748b;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+    label { font-size: 0.875rem; font-weight: 600; color: #374151; }
+    .hint { font-size: 0.75rem; color: #6b7280; }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="number"],
+    input[type="time"],
+    select,
+    textarea {
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: #1e293b;
+      background: #f8fafc;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #2563eb;
+      background: #fff;
+    }
+    input[readonly] { background: #f1f5f9; color: #6b7280; cursor: default; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .btn-save {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 32px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-save:hover { background: #1d4ed8; }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #save-status {
+      font-size: 0.85rem;
+      margin-left: 12px;
+      color: #16a34a;
+      display: none;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">⚙️ Settings</div>
+  <div class="links">
+    <a href="/admin">🖥 Admin</a>
+    <a href="/tv" target="_blank">📺 TV</a>
+  </div>
+</nav>
+
+<main>
+  <!-- General -->
+  <div class="card">
+    <div class="card-title">General</div>
+
+    <div class="field">
+      <label for="shop_name">Shop / Clinic Name</label>
+      <input type="text" id="shop_name" placeholder="My Queue" />
+    </div>
+
+    <div class="field">
+      <label for="base_url">Web App URL</label>
+      <input type="text" id="base_url" placeholder="http://192.168.1.100:8080" />
+      <span class="hint">Your server's IP address on the local network — used for the QR code on the TV display so customers can scan it from their phones. e.g. <code>http://192.168.1.100:8080</code></span>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="queue_padding">Queue Number Padding</label>
+        <input type="number" id="queue_padding" min="1" max="5" placeholder="3" />
+        <span class="hint">e.g. 3 → displays as 005</span>
+      </div>
+      <div class="field">
+        <label for="daily_reset_time">Daily Auto-Reset Time</label>
+        <input type="time" id="daily_reset_time" />
+        <span class="hint">Queue resets automatically at this time</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Announcements -->
+  <div class="card">
+    <div class="card-title">Announcements</div>
+
+    <div class="field">
+      <label for="announcement_message">Scrolling Ticker Message</label>
+      <input type="text" id="announcement_message" placeholder="Welcome! Please take a queue number." />
+      <span class="hint">Displayed on TV display bottom ticker. Leave empty to hide.</span>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="announcement_language">Voice Language</label>
+        <select id="announcement_language">
+          <option value="th">Thai only</option>
+          <option value="en">English only</option>
+          <option value="th+en">Thai + English</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="announcement_sound">Attention Sound</label>
+        <select id="announcement_sound">
+          <option value="chime">Chime</option>
+          <option value="bell">Bell</option>
+          <option value="beep">Beep</option>
+          <option value="none">None</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="thai_voice">Thai Voice (edge-tts)</label>
+        <select id="thai_voice">
+          <option value="th-TH-PremwadeeNeural">th-TH-PremwadeeNeural (Female)</option>
+          <option value="th-TH-NiwatNeural">th-TH-NiwatNeural (Male)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="english_voice">English Voice (edge-tts)</label>
+        <select id="english_voice">
+          <option value="en-US-JennyNeural">en-US-JennyNeural (Female)</option>
+          <option value="en-US-GuyNeural">en-US-GuyNeural (Male)</option>
+          <option value="en-GB-SoniaNeural">en-GB-SoniaNeural (British)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Push Notifications -->
+  <div class="card">
+    <div class="card-title">Web Push Notifications</div>
+    <div class="field">
+      <label for="vapid_email">VAPID Email</label>
+      <input type="email" id="vapid_email" placeholder="admin@yourshop.com" />
+      <span class="hint">Required for push notifications. Used in VAPID claims.</span>
+    </div>
+    <div class="field">
+      <label for="vapid_public_key">VAPID Public Key (auto-generated)</label>
+      <input type="text" id="vapid_public_key" readonly />
+    </div>
+    <div class="field">
+      <span class="hint">VAPID keys are auto-generated on first startup. To regenerate, clear the keys in the database and restart.</span>
+    </div>
+  </div>
+
+  <!-- Save -->
+  <div class="card" style="display:flex; align-items:center;">
+    <button class="btn-save" id="save-btn" onclick="saveSettings()">Save Settings</button>
+    <span id="save-status">✓ Saved</span>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  const FIELDS = [
+    'shop_name', 'base_url', 'queue_padding', 'daily_reset_time',
+    'announcement_message', 'announcement_language', 'announcement_sound',
+    'thai_voice', 'english_voice', 'vapid_email', 'vapid_public_key',
+  ];
+
+  const toast     = document.getElementById('toast');
+  const saveBtn   = document.getElementById('save-btn');
+  const saveStatus = document.getElementById('save-status');
+
+  let toastTimer;
+  function showToast(msg, color = '#1e293b') {
+    toast.textContent = msg;
+    toast.style.background = color;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  async function loadSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      FIELDS.forEach(f => {
+        const el = document.getElementById(f);
+        if (el && data[f] !== undefined) el.value = data[f];
+      });
+    } catch (e) {
+      showToast('Failed to load settings', '#dc2626');
+    }
+  }
+
+  async function saveSettings() {
+    saveBtn.disabled = true;
+    const payload = {};
+    FIELDS.filter(f => f !== 'vapid_public_key').forEach(f => {
+      const el = document.getElementById(f);
+      if (el) payload[f] = el.value;
+    });
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        saveStatus.style.display = 'inline';
+        setTimeout(() => { saveStatus.style.display = 'none'; }, 3000);
+        showToast('Settings saved!', '#166534');
+      } else {
+        showToast('Save failed', '#dc2626');
+      }
+    } catch (e) {
+      showToast('Error: ' + e.message, '#dc2626');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  }
+
+  loadSettings();
+</script>
+</body>
+</html>

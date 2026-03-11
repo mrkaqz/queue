@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+aiosqlite
+edge-tts
+pywebpush
+python-multipart
+httpx
