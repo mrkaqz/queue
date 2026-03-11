@@ -188,6 +188,32 @@
     }
     #ticker-wrap.hidden { display: none; }
 
+    /* ── Audio unlock banner (iOS autoplay workaround) ──────────────────── */
+    #audio-unlock {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(37, 99, 235, 0.92);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 99px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      z-index: 200;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+      transition: opacity 0.4s, transform 0.4s;
+      white-space: nowrap;
+    }
+    #audio-unlock.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-50%) translateY(12px);
+    }
+
     /* ── Mobile (phone preview) ─────────────────────────────────────────── */
     @media (max-width: 640px) {
       body { overflow-y: auto; }
@@ -287,6 +313,8 @@
   </div>
 </div>
 
+<div id="audio-unlock" class="hidden">🔊 แตะเพื่อเปิดเสียง · Tap to enable sound</div>
+
 <div id="ticker-wrap" class="hidden">
   <span id="ticker-inner"></span>
 </div>
@@ -345,6 +373,40 @@
     .then(r => r.json())
     .then(s => buildQR(s.base_url || ''))
     .catch(() => buildQR(''));
+
+  // ── Audio unlock (iOS autoplay workaround) ───────────────────────────────
+  const audioUnlockEl = document.getElementById('audio-unlock');
+  let audioUnlocked = false;
+
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    audioUnlockEl.classList.add('hidden');
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx.resume().then(() => {
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+      });
+    } catch (e) {}
+  }
+
+  // Test if autoplay is allowed; show banner only if blocked
+  (function checkAutoplay() {
+    const silent = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+    silent.play().then(() => {
+      audioUnlocked = true;  // autoplay allowed, banner stays hidden
+    }).catch(() => {
+      audioUnlockEl.classList.remove('hidden');  // show tap-to-enable banner
+    });
+  })();
+
+  // Any tap on the page also unlocks (for smart TVs using remote OK button)
+  document.addEventListener('click', unlockAudio, { once: true });
+  audioUnlockEl.addEventListener('click', unlockAudio);
 
   // ── Audio queue (sequential playback) ────────────────────────────────────
   let audioQueue = [];
