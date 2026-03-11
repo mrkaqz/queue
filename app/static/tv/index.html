@@ -183,6 +183,60 @@
     }
     #ticker-wrap.hidden { display: none; }
 
+    /* ── Mobile (phone preview) ─────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      body { overflow-y: auto; }
+
+      #topbar {
+        padding: 10px 14px;
+      }
+      #shop-logo { height: 32px; max-width: 100px; }
+      #shop-name { font-size: 1rem; }
+      #clock     { font-size: 0.95rem; }
+
+      #main {
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        overflow: visible;
+      }
+
+      /* Serving number block — full width, centered */
+      #current-card {
+        padding: 28px 16px 20px;
+        align-items: center;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      #serving-label {
+        font-size: 0.85rem;
+        letter-spacing: 0.1em;
+      }
+      #current-number {
+        font-size: clamp(5rem, 38vw, 8rem);
+      }
+
+      /* Sidebar — becomes a horizontal row below the number */
+      #sidebar {
+        position: static;
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: flex-start;
+        gap: 0;
+        padding: 20px 16px;
+        border-left: none;
+        border-top: none;
+        background: #f8fafc;
+      }
+      .info-value { font-size: 2.8rem; }
+
+      /* QR makes no sense on the viewer's own phone */
+      #qr-wrap { display: none; }
+
+      #ticker-wrap { height: 40px; }
+      #ticker-inner { font-size: 0.95rem; }
+    }
+
   </style>
 </head>
 <body>
