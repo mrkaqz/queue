@@ -1,27 +1,80 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File
 from app import database as db
 from app.websocket import manager
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
+_ALLOWED_LOGO_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png":  ".png",
+    "image/gif":  ".gif",
+    "image/webp": ".webp",
+    "image/svg+xml": ".svg",
+}
+
 
 @router.get("")
 async def get_settings():
     raw = await db.get_all_settings()
-    # Don't expose private VAPID key to frontend
     safe = {k: v for k, v in raw.items() if k != "vapid_private_key"}
     return safe
 
 
 @router.put("")
 async def update_settings(data: dict):
-    # Don't allow overwriting generated VAPID keys via this endpoint unless explicitly set
     await db.set_settings(data)
-    # Broadcast so all pages can update shop name etc.
     settings = await db.get_all_settings()
     await manager.broadcast({
         "event": "settings_updated",
         "shop_name": settings.get("shop_name", "My Queue"),
         "announcement_message": settings.get("announcement_message", ""),
+        "shop_logo": settings.get("shop_logo", ""),
     })
     return {"message": "Settings updated"}
+
+
+@router.post("/logo")
+async def upload_logo(file: UploadFile = File(...)):
+    if file.content_type not in _ALLOWED_LOGO_TYPES:
+        return {"error": "Invalid file type. Use JPEG, PNG, GIF, WebP, or SVG."}
+
+    logo_dir = db.DATA_DIR / "logo"
+    logo_dir.mkdir(parents=True, exist_ok=True)
+
+    # Remove any previous logo file
+    for old in logo_dir.glob("shop_logo.*"):
+        old.unlink()
+
+    ext = _ALLOWED_LOGO_TYPES[file.content_type]
+    filepath = logo_dir / f"shop_logo{ext}"
+    filepath.write_bytes(await file.read())
+
+    logo_url = f"/logo/shop_logo{ext}"
+    await db.set_setting("shop_logo", logo_url)
+
+    settings = await db.get_all_settings()
+    await manager.broadcast({
+        "event": "settings_updated",
+        "shop_name": settings.get("shop_name", "My Queue"),
+        "announcement_message": settings.get("announcement_message", ""),
+        "shop_logo": logo_url,
+    })
+    return {"logo_url": logo_url}
+
+
+@router.delete("/logo")
+async def remove_logo():
+    logo_dir = db.DATA_DIR / "logo"
+    for old in logo_dir.glob("shop_logo.*"):
+        old.unlink()
+
+    await db.set_setting("shop_logo", "")
+
+    settings = await db.get_all_settings()
+    await manager.broadcast({
+        "event": "settings_updated",
+        "shop_name": settings.get("shop_name", "My Queue"),
+        "announcement_message": settings.get("announcement_message", ""),
+        "shop_logo": "",
+    })
+    return {"message": "Logo removed"}

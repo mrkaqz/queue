@@ -7,6 +7,7 @@ DB_PATH = DATA_DIR / "queue.db"
 
 SETTING_DEFAULTS = {
     "shop_name": "My Queue",
+    "shop_logo": "",
     "base_url": "",
     "queue_padding": "3",
     "daily_reset_time": "00:00",

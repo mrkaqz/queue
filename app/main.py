@@ -15,6 +15,7 @@ from app.routers import push as push_router
 
 STATIC_DIR = Path(__file__).parent / "static"
 AUDIO_DIR = db.DATA_DIR / "audio"
+LOGO_DIR  = db.DATA_DIR / "logo"
 
 
 # ── VAPID key auto-generation ────────────────────────────────────────────────
@@ -86,7 +87,9 @@ app = FastAPI(title="Queue", lifespan=lifespan)
 
 # Static files (CSS, JS, icons, audio)
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+LOGO_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=str(AUDIO_DIR)), name="audio")
+app.mount("/logo",  StaticFiles(directory=str(LOGO_DIR)),  name="logo")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # API routers
@@ -136,6 +139,7 @@ async def websocket_endpoint(ws: WebSocket):
             "status": status,
             "shop_name": settings.get("shop_name", "My Queue"),
             "announcement_message": settings.get("announcement_message", ""),
+            "shop_logo": settings.get("shop_logo", ""),
         }))
         while True:
             await ws.receive_text()  # keep alive; clients don't send messages
