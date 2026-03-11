@@ -31,23 +31,51 @@ A lightweight, self-hosted queue management system designed for small businesses
 
 ## Compatible Platforms
 
-| OS | Docker | Python (no Docker) |
+| OS / Device | Docker | Python (no Docker) |
 |---|---|---|
 | Windows 10/11 | ✅ Docker Desktop | ✅ Python 3.11+ |
 | macOS (Intel & Apple Silicon) | ✅ Docker Desktop | ✅ Python 3.11+ |
 | Linux (Ubuntu, Debian, etc.) | ✅ Docker Engine | ✅ Python 3.11+ |
+| Synology NAS (x86-64 / ARM64) | ✅ Container Manager | — |
+
+> **Architectures:** pre-built images are available for `linux/amd64` and `linux/arm64`.
+
+---
+
+## Docker Image (GHCR)
+
+Pre-built images are published automatically to the GitHub Container Registry on every release:
+
+```
+ghcr.io/mrkaqz/queue:latest       # latest main branch
+ghcr.io/mrkaqz/queue:1.0.1        # specific version
+```
+
+[![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
 
 ---
 
 ## Quick Start
 
-### Option 1 — Docker (recommended, all platforms)
+### Option 1 — Docker via GHCR (recommended, no git clone needed)
 
-Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/macOS) or [Docker Engine](https://docs.docker.com/engine/install/) (Linux), then:
+Create a `docker-compose.yml` anywhere on your machine:
+
+```yaml
+services:
+  queue:
+    image: ghcr.io/mrkaqz/queue:latest
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+Then run:
 
 ```bash
-git clone https://github.com/mrkaqz/queue.git
-cd queue
 docker compose up -d
 ```
 
@@ -57,9 +85,25 @@ The app will be available at:
 
 > A self-signed SSL certificate is auto-generated on first run inside the container.
 
+**To update to the latest version:**
+
+```bash
+docker compose pull && docker compose up -d
+```
+
 ---
 
-### Option 2 — Python directly (no Docker)
+### Option 2 — Docker (build from source)
+
+```bash
+git clone https://github.com/mrkaqz/queue.git
+cd queue
+docker compose up -d
+```
+
+---
+
+### Option 3 — Python directly (no Docker)
 
 **Requirements:** Python 3.11+ — [python.org/downloads](https://www.python.org/downloads/)
 
