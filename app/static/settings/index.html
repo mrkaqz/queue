@@ -96,6 +96,21 @@
       display: none;
     }
 
+    /* ── Mobile ─────────────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      nav { padding: 0 14px; }
+      nav .brand { font-size: 1rem; }
+      nav .links a { margin-left: 12px; font-size: 0.8rem; }
+
+      main { margin: 12px auto; padding: 0 12px; gap: 16px; }
+      .card { padding: 16px; }
+
+      /* Two-column grid → single column */
+      .row { grid-template-columns: 1fr; gap: 0; }
+
+      .btn-save { width: 100%; padding: 14px; font-size: 1rem; }
+    }
+
     #toast {
       position: fixed;
       bottom: 24px;
