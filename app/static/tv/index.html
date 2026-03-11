@@ -59,6 +59,7 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      padding-right: 280px; /* reserve space for the absolute sidebar */
     }
 
     /* Center: NOW SERVING — truly centered on the full page */
@@ -71,12 +72,16 @@
       z-index: 1;
     }
     #serving-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
       font-size: clamp(1.6rem, 2.8vw, 3rem);
       font-weight: 700;
       letter-spacing: 0.2em;
       text-transform: uppercase;
       color: #94a3b8;
     }
+    .label-sep { opacity: 0.4; }
     #current-number {
       font-size: clamp(12rem, 28vw, 36rem);
       font-weight: 900;
@@ -199,6 +204,7 @@
         justify-content: flex-start;
         align-items: stretch;
         overflow: visible;
+        padding-right: 0;
       }
 
       /* Serving number block — full width, centered */
@@ -208,9 +214,13 @@
         border-bottom: 1px solid #e2e8f0;
       }
       #serving-label {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15em;
         font-size: 0.85rem;
         letter-spacing: 0.1em;
       }
+      #serving-label .label-sep { display: none; }
       #current-number {
         font-size: clamp(5rem, 38vw, 8rem);
       }
@@ -252,7 +262,11 @@
 <div id="main">
   <!-- Left: big serving number -->
   <div id="current-card">
-    <div id="serving-label">กำลังให้บริการ &nbsp;·&nbsp; NOW SERVING</div>
+    <div id="serving-label">
+      <span>กำลังให้บริการ</span>
+      <span class="label-sep">·</span>
+      <span>NOW SERVING</span>
+    </div>
     <div id="current-number">—</div>
   </div>
 
