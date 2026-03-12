@@ -63,7 +63,19 @@ async def _daily_reset_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app import tts as _tts
+
     await db.init_db()
+
+    async def _run_warmup():
+        lang = await db.get_setting("announcement_language", "th")
+        v_th  = await db.get_setting("thai_voice", "th-TH-PremwadeeNeural")
+        v_en  = await db.get_setting("english_voice", "en-US-JennyNeural")
+        print(f"[TTS] Warming up audio for numbers 1-100 (lang={lang})")
+        await _tts.warmup(list(range(1, 101)), lang, v_th, v_en)
+        print("[TTS] Warmup complete")
+
+    asyncio.create_task(_run_warmup())
 
     # Generate VAPID keys if not present
     pub = await db.get_setting("vapid_public_key")

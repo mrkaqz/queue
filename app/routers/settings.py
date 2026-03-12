@@ -1,6 +1,20 @@
+import asyncio
+
 from fastapi import APIRouter, UploadFile, File
 from app import database as db
 from app.websocket import manager
+
+_VOICE_KEYS = {"announcement_language", "thai_voice", "english_voice"}
+
+
+async def _rewarm():
+    from app import tts as _tts
+    lang = await db.get_setting("announcement_language", "th")
+    v_th  = await db.get_setting("thai_voice", "th-TH-PremwadeeNeural")
+    v_en  = await db.get_setting("english_voice", "en-US-JennyNeural")
+    print(f"[TTS] Re-warming audio after settings change (lang={lang})")
+    await _tts.warmup(list(range(1, 101)), lang, v_th, v_en)
+    print("[TTS] Re-warmup complete")
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -31,6 +45,8 @@ async def update_settings(data: dict):
         "shop_logo": settings.get("shop_logo", ""),
         "admin_sound": settings.get("admin_sound", "false"),
     })
+    if _VOICE_KEYS & set(data.keys()):
+        asyncio.create_task(_rewarm())
     return {"message": "Settings updated"}
 
 
