@@ -590,6 +590,9 @@
     toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
   }
 
+  // ── Timezone ──────────────────────────────────────────────────────────────
+  let adminTimezone = '';   // IANA timezone string from settings; empty = browser local
+
   // ── Audio playback ────────────────────────────────────────────────────────
   let soundOutput  = 'tv';
   let audioQueue   = [];
@@ -623,7 +626,8 @@
       const res = await fetch('/api/settings', { headers: authHeaders() });
       if (res.status === 401) { clearToken(); showUnlockModal(); return; }
       const data = await res.json();
-      soundOutput = data.admin_sound || 'tv';
+      soundOutput   = data.admin_sound || 'tv';
+      adminTimezone = data.timezone    || '';
     } catch(e) { /* ignore */ }
   }
 
@@ -673,8 +677,12 @@
 
   function fmtTime(ts) {
     if (!ts) return '—';
-    const d = new Date(ts.replace(' ', 'T'));
-    return isNaN(d) ? ts : d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    // Append 'Z' so JS treats the stored value as UTC (Docker containers run UTC)
+    const d = new Date(ts.replace(' ', 'T') + 'Z');
+    if (isNaN(d)) return ts;
+    const opts = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    if (adminTimezone) opts.timeZone = adminTimezone;
+    return d.toLocaleTimeString('th-TH', opts);
   }
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
@@ -696,6 +704,7 @@
       if (msg.event === 'settings_updated') {
         shopNameEl.textContent = msg.shop_name || 'Queue Admin';
         if (msg.admin_sound !== undefined) soundOutput = msg.admin_sound;
+        if (msg.timezone !== undefined) adminTimezone = msg.timezone || '';
       }
     };
     ws.onclose = () => { connBadge.textContent = 'Offline'; connBadge.className = 'disconnected'; setTimeout(connect, 3000); };

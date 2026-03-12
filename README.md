@@ -51,7 +51,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:1.0.5        # specific version
+ghcr.io/mrkaqz/queue:1.0.6        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -222,6 +222,7 @@ All settings are managed through `/settings` in the UI. No config files needed.
 | Announcement Language | `th` | `th` / `en` / `th+en` |
 | Announcement Sound | `chime` | Sound before voice: `chime` / `bell` / `beep` / `none` |
 | Announcement Sound Output | `TV only` | Where audio plays: `TV only` / `Admin + TV` / `Admin only` |
+| Timezone | *(empty)* | IANA timezone for admin timestamps, e.g. `Asia/Bangkok`. Empty = browser local time |
 | Thai Voice | `th-TH-PremwadeeNeural` | edge-tts voice for Thai |
 | English Voice | `en-US-JennyNeural` | edge-tts voice for English |
 | VAPID Email | *(required for push)* | Email used for Web Push VAPID keys |

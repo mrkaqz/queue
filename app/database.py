@@ -18,6 +18,7 @@ SETTING_DEFAULTS = {
     "english_voice": "en-US-JennyNeural",
     "admin_sound": "tv",
     "admin_pin": "",          # SHA-256 hash of the admin PIN; empty = not configured
+    "timezone": "",           # IANA timezone string e.g. "Asia/Bangkok"; empty = browser local
     "vapid_email": "",
     "vapid_public_key": "",
     "vapid_private_key": "",

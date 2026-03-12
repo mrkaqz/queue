@@ -237,6 +237,12 @@
       <span class="hint">Your server's IP address on the local network — used for the QR code on the TV display so customers can scan it from their phones. e.g. <code>http://192.168.1.100:8080</code></span>
     </div>
 
+    <div class="field">
+      <label for="timezone">Timezone</label>
+      <input type="text" id="timezone" placeholder="e.g. Asia/Bangkok, Europe/London, America/New_York" />
+      <span class="hint">IANA timezone name for displaying queue timestamps on the admin page. Leave empty to use browser local time. <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" target="_blank" rel="noopener">Full timezone list ↗</a></span>
+    </div>
+
     <div class="row">
       <div class="field">
         <label for="queue_padding">Queue Number Padding</label>
@@ -491,7 +497,7 @@
 
   // ── Settings ──────────────────────────────────────────────────────────────
   const FIELDS = [
-    'shop_name', 'base_url', 'queue_padding', 'daily_reset_time',
+    'shop_name', 'base_url', 'timezone', 'queue_padding', 'daily_reset_time',
     'announcement_message', 'announcement_language', 'announcement_sound',
     'admin_sound', 'thai_voice', 'english_voice', 'vapid_email', 'vapid_public_key',
   ];
