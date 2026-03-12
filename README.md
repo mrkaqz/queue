@@ -13,8 +13,9 @@ A lightweight, self-hosted queue management system designed for small businesses
 - **PWA Web Push Notifications** — Notify customers on their phone when their number is called (works in background)
 - **Thai/English Voice Announcements** — Natural TTS via `edge-tts` (Microsoft Neural voices, no API key needed)
 - **Real-time Updates** — WebSocket-powered live sync across all connected devices
+- **PIN Security** — 4-digit PIN locks `/admin` and `/settings` with backend-enforced session tokens (LAN & cloud-safe)
 - **SQLite** — Zero-config database, data persists via Docker volume
-- **Single Docker Container** — Easy to deploy anywhere on your local network
+- **Single Docker Container** — Easy to deploy anywhere on your local network or the cloud
 
 ---
 
@@ -50,7 +51,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:1.0.4        # specific version
+ghcr.io/mrkaqz/queue:1.0.5        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -172,6 +173,27 @@ A QR code is shown on the TV page. Customers scan it to open `/status` on their 
 
 ---
 
+## Security (PIN Lock)
+
+The `/admin` and `/settings` pages are protected by a **4-digit PIN** with backend-enforced session tokens — safe for both local network and internet/cloud deployments.
+
+### First-time setup
+On the very first visit to `/admin` or `/settings`, a **Set Up Admin PIN** screen appears. Enter and confirm a 4-digit PIN — the session is then unlocked for that browser tab.
+
+### Returning visits
+A PIN entry screen appears when no session token is found. The session is stored in `sessionStorage` — it survives page refresh within the same tab but requires re-entry in a new tab.
+
+### Change PIN
+A 🔑 button in the admin page nav opens a **Change PIN** modal. Requires the current PIN before accepting a new one.
+
+### How it works
+- PINs are stored as **SHA-256 hashes** — never plain text
+- After a correct PIN entry the server issues a **Bearer token** (8-hour TTL, stored in `sessionStorage`)
+- All protected API endpoints return `401 Unauthorized` without a valid token — the frontend lock cannot be bypassed by calling the API directly
+- The TV display (`/tv`), customer status page (`/status`), and WebSocket are public and unaffected
+
+---
+
 ## Voice Announcements
 
 Voice announcements use [`edge-tts`](https://github.com/rany2/edge-tts) with Microsoft's neural voices — free, no API key required. Internet access is needed the first time a number is announced; audio is then **cached permanently** in `data/audio/`.
@@ -224,6 +246,7 @@ queue/
     ├── number_to_words.py       # Integer → Thai/English word converter
     ├── websocket.py             # WebSocket broadcast manager
     ├── routers/
+    │   ├── auth.py              # PIN auth endpoints & session token logic
     │   ├── queue.py             # Queue API endpoints
     │   ├── settings.py          # Settings API endpoints
     │   └── push.py              # Web Push subscription endpoints
@@ -240,34 +263,47 @@ queue/
 
 ## API Reference
 
+> **Auth:** endpoints marked 🔒 require `Authorization: Bearer <token>` — obtain a token via `POST /api/auth/verify-pin`. Unmarked endpoints are public.
+
+### Authentication
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/auth/status` | Public | Check whether a PIN is configured |
+| `POST` | `/api/auth/set-pin` | Public | Set the PIN for the first time |
+| `POST` | `/api/auth/verify-pin` | Public | Verify PIN → returns session token |
+| `POST` | `/api/auth/change-pin` | 🔒 | Change PIN (verifies current PIN first) |
+
 ### Queue
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/queue/status` | Current number, next, and waiting count |
-| `GET` | `/api/queue/list` | Full queue list for today |
-| `POST` | `/api/queue/add` | Add next queue number |
-| `POST` | `/api/queue/call-next` | Call next waiting number |
-| `POST` | `/api/queue/recall` | Re-announce current number |
-| `POST` | `/api/queue/skip` | Skip current number |
-| `POST` | `/api/queue/hold` | Put current number on hold |
-| `POST` | `/api/queue/remove-last` | Remove the last waiting number |
-| `POST` | `/api/queue/reset` | Reset all queues |
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/queue/status` | Public | Current number, next, and waiting count |
+| `GET` | `/api/queue/list` | 🔒 | Full queue list for today |
+| `POST` | `/api/queue/add` | 🔒 | Add next queue number |
+| `POST` | `/api/queue/call-next` | 🔒 | Call next waiting number |
+| `POST` | `/api/queue/recall` | 🔒 | Re-announce current number |
+| `POST` | `/api/queue/skip` | 🔒 | Skip current number |
+| `POST` | `/api/queue/hold` | 🔒 | Put current number on hold |
+| `POST` | `/api/queue/remove-last` | 🔒 | Remove the last waiting number |
+| `POST` | `/api/queue/reset` | 🔒 | Reset all queues |
 
 ### Settings
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/settings` | Get all settings |
-| `PUT` | `/api/settings` | Update settings |
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/settings` | 🔒 | Get all settings |
+| `PUT` | `/api/settings` | 🔒 | Update settings |
+| `POST` | `/api/settings/logo` | 🔒 | Upload shop logo |
+| `DELETE` | `/api/settings/logo` | 🔒 | Remove shop logo |
 
 ### Push Notifications
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/push/vapid-key` | Get public VAPID key |
-| `POST` | `/api/push/subscribe` | Register device for push |
-| `POST` | `/api/push/unsubscribe` | Remove device subscription |
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/push/vapid-key` | Public | Get public VAPID key |
+| `POST` | `/api/push/subscribe` | Public | Register device for push |
+| `POST` | `/api/push/unsubscribe` | Public | Remove device subscription |
 
 ### WebSocket
 
