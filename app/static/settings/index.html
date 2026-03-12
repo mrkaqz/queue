@@ -221,6 +221,16 @@
       </div>
     </div>
 
+    <div class="field">
+      <label for="admin_sound">Announcement Sound Output</label>
+      <select id="admin_sound">
+        <option value="tv">TV only</option>
+        <option value="both">Admin + TV</option>
+        <option value="admin">Admin only</option>
+      </select>
+      <span class="hint">Choose where queue announcement audio plays. "Admin only" silences the TV display.</span>
+    </div>
+
     <div class="row">
       <div class="field">
         <label for="thai_voice">Thai Voice (edge-tts)</label>
@@ -270,7 +280,7 @@
   const FIELDS = [
     'shop_name', 'base_url', 'queue_padding', 'daily_reset_time',
     'announcement_message', 'announcement_language', 'announcement_sound',
-    'thai_voice', 'english_voice', 'vapid_email', 'vapid_public_key',
+    'admin_sound', 'thai_voice', 'english_voice', 'vapid_email', 'vapid_public_key',
   ];
 
   const toast     = document.getElementById('toast');

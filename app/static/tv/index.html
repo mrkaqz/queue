@@ -368,10 +368,14 @@
     });
   }
 
-  // Initial load — fetch base_url from settings
+  // Initial load — fetch settings
+  let soundOutput = 'tv'; // 'tv' | 'both' | 'admin'
   fetch('/api/settings')
     .then(r => r.json())
-    .then(s => buildQR(s.base_url || ''))
+    .then(s => {
+      buildQR(s.base_url || '');
+      soundOutput = s.admin_sound || 'tv';
+    })
     .catch(() => buildQR(''));
 
   // ── Audio unlock (iOS autoplay workaround) ───────────────────────────────
@@ -423,7 +427,7 @@
   }
 
   function enqueueAudio(urls) {
-    if (!urls || !urls.length) return;
+    if (soundOutput === 'admin' || !urls || !urls.length) return;
     audioQueue.push(...urls);
     if (!audioPlaying) playNext();
   }
@@ -506,6 +510,7 @@
         shopEl.textContent = msg.shop_name || 'My Queue';
         setTicker(msg.announcement_message);
         setLogo(msg.shop_logo || '');
+        if (msg.admin_sound !== undefined) soundOutput = msg.admin_sound;
         fetch('/api/settings').then(r => r.json()).then(s => buildQR(s.base_url || '')).catch(() => {});
         return;
       }

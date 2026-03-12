@@ -27,6 +27,7 @@ class Settings(BaseModel):
     announcement_language: str = "th"
     thai_voice: str = "th-TH-PremwadeeNeural"
     english_voice: str = "en-US-JennyNeural"
+    admin_sound: str = "tv"
     vapid_email: str = ""
     vapid_public_key: str = ""
     vapid_private_key: str = ""

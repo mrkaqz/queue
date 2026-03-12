@@ -29,6 +29,7 @@ async def update_settings(data: dict):
         "shop_name": settings.get("shop_name", "My Queue"),
         "announcement_message": settings.get("announcement_message", ""),
         "shop_logo": settings.get("shop_logo", ""),
+        "admin_sound": settings.get("admin_sound", "false"),
     })
     return {"message": "Settings updated"}
 
@@ -58,6 +59,7 @@ async def upload_logo(file: UploadFile = File(...)):
         "shop_name": settings.get("shop_name", "My Queue"),
         "announcement_message": settings.get("announcement_message", ""),
         "shop_logo": logo_url,
+        "admin_sound": settings.get("admin_sound", "tv"),
     })
     return {"logo_url": logo_url}
 
@@ -76,5 +78,6 @@ async def remove_logo():
         "shop_name": settings.get("shop_name", "My Queue"),
         "announcement_message": settings.get("announcement_message", ""),
         "shop_logo": "",
+        "admin_sound": settings.get("admin_sound", "tv"),
     })
     return {"message": "Logo removed"}

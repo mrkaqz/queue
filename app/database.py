@@ -16,6 +16,7 @@ SETTING_DEFAULTS = {
     "announcement_language": "th",
     "thai_voice": "th-TH-PremwadeeNeural",
     "english_voice": "en-US-JennyNeural",
+    "admin_sound": "tv",
     "vapid_email": "",
     "vapid_public_key": "",
     "vapid_private_key": "",
@@ -55,6 +56,10 @@ async def init_db():
                 "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
                 (key, value),
             )
+        # Migrate legacy boolean admin_sound value
+        await db.execute(
+            "UPDATE settings SET value = 'tv' WHERE key = 'admin_sound' AND value = 'false'"
+        )
         await db.commit()
 
 

@@ -262,7 +262,7 @@
 
 <footer>
   <a href="https://github.com/mrkaqz/queue" target="_blank">github.com/mrkaqz/queue</a>
-  &nbsp;·&nbsp; v1.0.2 &nbsp;·&nbsp; 2026-03-11 &nbsp;·&nbsp; MIT License
+  &nbsp;·&nbsp; v1.0.3 &nbsp;·&nbsp; 2026-03-12 &nbsp;·&nbsp; MIT License
 </footer>
 
 <div id="toast"></div>
@@ -283,6 +283,45 @@
     toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  // ── Audio playback ────────────────────────────────────────────────────────
+  let soundOutput = 'tv'; // 'tv' | 'admin' | 'both'
+  let audioQueue = [];
+  let audioPlaying = false;
+  let audioUnlocked = false;
+
+  function playNext() {
+    if (audioQueue.length === 0) { audioPlaying = false; return; }
+    audioPlaying = true;
+    const url = audioQueue.shift();
+    const audio = new Audio(url);
+    audio.onended = playNext;
+    audio.onerror = playNext;
+    audio.play().catch(playNext);
+  }
+
+  function enqueueAudio(urls) {
+    if (soundOutput === 'tv' || !urls || !urls.length) return;
+    audioQueue.push(...urls);
+    if (!audioPlaying) playNext();
+  }
+
+  // Unlock audio on first user interaction (iOS/autoplay policy)
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    const silent = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAA' +
+      'EAAQARmQABmQAABAAgADAAYQAAAAAAAAAAAAAA');
+    silent.play().then(() => { audioUnlocked = true; }).catch(() => {});
+  }
+  document.addEventListener('click', unlockAudio, { once: true });
+
+  async function loadAdminSoundSetting() {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      soundOutput = data.admin_sound || 'tv';
+    } catch (e) { /* ignore */ }
   }
 
   // ── API ───────────────────────────────────────────────────────────────────
@@ -365,8 +404,13 @@
       if (msg.event?.startsWith('queue_') || msg.event === 'init') {
         refreshList();
       }
+      // Play audio on announcement events
+      if (['queue_called', 'queue_recalled', 'queue_skipped'].includes(msg.event)) {
+        enqueueAudio(msg.audio_urls);
+      }
       if (msg.event === 'settings_updated') {
         shopNameEl.textContent = msg.shop_name || 'Queue Admin';
+        if (msg.admin_sound !== undefined) soundOutput = msg.admin_sound;
       }
     };
 
@@ -378,6 +422,7 @@
     ws.onerror = () => ws.close();
   }
 
+  loadAdminSoundSetting();
   refreshList();
   connect();
 </script>
