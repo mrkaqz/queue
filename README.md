@@ -50,7 +50,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:1.0.2        # specific version
+ghcr.io/mrkaqz/queue:1.0.4        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -176,6 +176,8 @@ A QR code is shown on the TV page. Customers scan it to open `/status` on their 
 
 Voice announcements use [`edge-tts`](https://github.com/rany2/edge-tts) with Microsoft's neural voices — free, no API key required. Internet access is needed the first time a number is announced; audio is then **cached permanently** in `data/audio/`.
 
+On startup, audio for numbers **1–100 is pre-generated in the background** so the first queue call plays instantly with no delay. The cache is automatically rebuilt whenever voice or language settings are changed.
+
 - Thai: `th-TH-PremwadeeNeural` → *"หมายเลขคิวที่ห้า"*
 - English: `en-US-JennyNeural` → *"Queue number five"*
 - Bilingual: Thai followed by English
@@ -197,6 +199,7 @@ All settings are managed through `/settings` in the UI. No config files needed.
 | Announcement Message | *(empty)* | Scrolling ticker text on TV display |
 | Announcement Language | `th` | `th` / `en` / `th+en` |
 | Announcement Sound | `chime` | Sound before voice: `chime` / `bell` / `beep` / `none` |
+| Announcement Sound Output | `TV only` | Where audio plays: `TV only` / `Admin + TV` / `Admin only` |
 | Thai Voice | `th-TH-PremwadeeNeural` | edge-tts voice for Thai |
 | English Voice | `en-US-JennyNeural` | edge-tts voice for English |
 | VAPID Email | *(required for push)* | Email used for Web Push VAPID keys |
