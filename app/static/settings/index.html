@@ -238,9 +238,9 @@
     </div>
 
     <div class="field">
-      <label for="timezone">Timezone</label>
-      <input type="text" id="timezone" placeholder="e.g. Asia/Bangkok, Europe/London, America/New_York" />
-      <span class="hint">IANA timezone name for displaying queue timestamps on the admin page. Leave empty to use browser local time. <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" target="_blank" rel="noopener">Full timezone list ↗</a></span>
+      <label for="timezone">Timezone Offset (UTC±)</label>
+      <input type="number" id="timezone" min="-12" max="14" step="0.5" placeholder="0" />
+      <span class="hint">UTC offset for displaying queue timestamps on the admin page. e.g. <code>0</code> = UTC &nbsp;|&nbsp; <code>7</code> = Bangkok (UTC+7) &nbsp;|&nbsp; <code>-5</code> = New York (EST) &nbsp;|&nbsp; <code>5.5</code> = India (IST)</span>
     </div>
 
     <div class="row">

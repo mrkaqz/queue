@@ -591,7 +591,7 @@
   }
 
   // ── Timezone ──────────────────────────────────────────────────────────────
-  let adminTimezone = '';   // IANA timezone string from settings; empty = browser local
+  let adminTzOffset = 0;    // UTC offset in hours from settings; e.g. 7 = UTC+7 (Bangkok)
 
   // ── Audio playback ────────────────────────────────────────────────────────
   let soundOutput  = 'tv';
@@ -627,7 +627,7 @@
       if (res.status === 401) { clearToken(); showUnlockModal(); return; }
       const data = await res.json();
       soundOutput   = data.admin_sound || 'tv';
-      adminTimezone = data.timezone    || '';
+      adminTzOffset = parseFloat(data.timezone ?? '0') || 0;
     } catch(e) { /* ignore */ }
   }
 
@@ -680,9 +680,9 @@
     // Append 'Z' so JS treats the stored value as UTC (Docker containers run UTC)
     const d = new Date(ts.replace(' ', 'T') + 'Z');
     if (isNaN(d)) return ts;
-    const opts = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
-    if (adminTimezone) opts.timeZone = adminTimezone;
-    return d.toLocaleTimeString('th-TH', opts);
+    // Shift by the configured UTC offset (in hours), then display as UTC so the shift sticks
+    const shifted = new Date(d.getTime() + adminTzOffset * 3600 * 1000);
+    return shifted.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' });
   }
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
@@ -704,7 +704,7 @@
       if (msg.event === 'settings_updated') {
         shopNameEl.textContent = msg.shop_name || 'Queue Admin';
         if (msg.admin_sound !== undefined) soundOutput = msg.admin_sound;
-        if (msg.timezone !== undefined) adminTimezone = msg.timezone || '';
+        if (msg.timezone !== undefined) adminTzOffset = parseFloat(msg.timezone ?? '0') || 0;
       }
     };
     ws.onclose = () => { connBadge.textContent = 'Offline'; connBadge.className = 'disconnected'; setTimeout(connect, 3000); };
