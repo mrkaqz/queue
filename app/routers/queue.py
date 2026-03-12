@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app import database as db
 from app import tts
 from app.websocket import manager
+from app.routers.auth import require_auth
 
 router = APIRouter(prefix="/api/queue", tags=["queue"])
 
@@ -19,12 +20,12 @@ async def queue_status():
     return await db.get_queue_status()
 
 
-@router.get("/list")
+@router.get("/list", dependencies=[Depends(require_auth)])
 async def queue_list():
     return await db.get_queue_list()
 
 
-@router.post("/add")
+@router.post("/add", dependencies=[Depends(require_auth)])
 async def add_queue():
     entry = await db.add_queue_entry()
     status = await db.get_queue_status()
@@ -36,7 +37,7 @@ async def add_queue():
     return entry
 
 
-@router.post("/call-next")
+@router.post("/call-next", dependencies=[Depends(require_auth)])
 async def call_next():
     lang, voice_th, voice_en = await _get_voice_settings()
     called = await db.call_next()
@@ -56,7 +57,7 @@ async def call_next():
     return {**called, "audio_urls": audio_urls}
 
 
-@router.post("/recall")
+@router.post("/recall", dependencies=[Depends(require_auth)])
 async def recall():
     lang, voice_th, voice_en = await _get_voice_settings()
     current = await db.recall_current()
@@ -73,7 +74,7 @@ async def recall():
     return {**current, "audio_urls": audio_urls}
 
 
-@router.post("/skip")
+@router.post("/skip", dependencies=[Depends(require_auth)])
 async def skip():
     lang, voice_th, voice_en = await _get_voice_settings()
     result = await db.skip_current()
@@ -95,7 +96,7 @@ async def skip():
     return result
 
 
-@router.post("/hold")
+@router.post("/hold", dependencies=[Depends(require_auth)])
 async def hold():
     result = await db.hold_current()
     if not result:
@@ -107,7 +108,7 @@ async def hold():
     return result
 
 
-@router.post("/remove-last")
+@router.post("/remove-last", dependencies=[Depends(require_auth)])
 async def remove_last():
     result = await db.remove_last_waiting()
     if not result:
@@ -121,7 +122,7 @@ async def remove_last():
     return result
 
 
-@router.post("/reset")
+@router.post("/reset", dependencies=[Depends(require_auth)])
 async def reset():
     await db.reset_queue()
     await manager.broadcast({"event": "queue_reset"})

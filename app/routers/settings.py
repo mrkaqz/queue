@@ -1,8 +1,9 @@
 import asyncio
 
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
 from app import database as db
 from app.websocket import manager
+from app.routers.auth import require_auth
 
 _VOICE_KEYS = {"announcement_language", "thai_voice", "english_voice"}
 
@@ -27,14 +28,14 @@ _ALLOWED_LOGO_TYPES = {
 }
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_auth)])
 async def get_settings():
     raw = await db.get_all_settings()
-    safe = {k: v for k, v in raw.items() if k != "vapid_private_key"}
+    safe = {k: v for k, v in raw.items() if k not in ("vapid_private_key", "admin_pin")}
     return safe
 
 
-@router.put("")
+@router.put("", dependencies=[Depends(require_auth)])
 async def update_settings(data: dict):
     await db.set_settings(data)
     settings = await db.get_all_settings()
@@ -50,7 +51,7 @@ async def update_settings(data: dict):
     return {"message": "Settings updated"}
 
 
-@router.post("/logo")
+@router.post("/logo", dependencies=[Depends(require_auth)])
 async def upload_logo(file: UploadFile = File(...)):
     if file.content_type not in _ALLOWED_LOGO_TYPES:
         return {"error": "Invalid file type. Use JPEG, PNG, GIF, WebP, or SVG."}
@@ -80,7 +81,7 @@ async def upload_logo(file: UploadFile = File(...)):
     return {"logo_url": logo_url}
 
 
-@router.delete("/logo")
+@router.delete("/logo", dependencies=[Depends(require_auth)])
 async def remove_logo():
     logo_dir = db.DATA_DIR / "logo"
     for old in logo_dir.glob("shop_logo.*"):

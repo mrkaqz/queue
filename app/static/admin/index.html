@@ -180,6 +180,66 @@
       footer { padding: 16px 12px; font-size: 0.72rem; }
     }
 
+    /* ── PIN Overlay ──────────────────────────────────────────────────────── */
+    #pin-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,0.95);
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    #change-pin-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,0.85);
+      display: none; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .pin-card {
+      background: #fff; border-radius: 16px;
+      padding: 36px 32px; width: 340px; max-width: 90vw;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+    }
+    .pin-icon  { font-size: 2.4rem; margin-bottom: 10px; }
+    .pin-title { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+    .pin-sub   { font-size: 0.82rem; color: #64748b; margin-bottom: 22px; }
+    .pin-label { font-size: 0.78rem; font-weight: 600; color: #374151; text-align: left; margin-bottom: 6px; margin-top: 4px; }
+    .pin-inputs { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; }
+    .pin-input {
+      width: 52px; height: 58px; text-align: center;
+      font-size: 1.6rem; font-weight: 700;
+      border: 2px solid #e2e8f0; border-radius: 10px;
+      background: #f8fafc; color: #1e293b;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+    .pin-input:focus { border-color: #2563eb; outline: none; background: #fff; }
+    .pin-input::-webkit-outer-spin-button,
+    .pin-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .pin-error { color: #dc2626; font-size: 0.8rem; min-height: 18px; margin-bottom: 10px; }
+    .pin-btn {
+      width: 100%; padding: 13px; border: none; border-radius: 8px;
+      background: #2563eb; color: #fff; font-size: 0.97rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .pin-btn:hover    { background: #1d4ed8; }
+    .pin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pin-btn-cancel   { background: #e2e8f0 !important; color: #1e293b !important; }
+    .pin-btn-cancel:hover { background: #cbd5e1 !important; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60%  { transform: translateX(-8px); }
+      40%,80%  { transform: translateX(8px); }
+    }
+    .shake { animation: shake 0.35s ease; }
+
+    /* Change PIN button in nav */
+    .btn-change-pin {
+      background: none; border: none; color: #94a3b8;
+      cursor: pointer; font-size: 0.9rem; margin-left: 20px; padding: 0;
+      line-height: 1;
+    }
+    .btn-change-pin:hover { color: #f8fafc; }
+
     /* Toast */
     #toast {
       position: fixed;
@@ -201,9 +261,84 @@
 </head>
 <body>
 
+<!-- ── PIN Overlay ──────────────────────────────────────────────────────────── -->
+<div id="pin-overlay">
+  <!-- Setup card (first time — no PIN set) -->
+  <div id="pin-setup" class="pin-card">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">Set Up Admin PIN</div>
+    <div class="pin-sub">Choose a 4-digit PIN to secure this page</div>
+    <div class="pin-label">New PIN</div>
+    <div class="pin-inputs" id="setup-pin">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-label">Confirm PIN</div>
+    <div class="pin-inputs" id="setup-confirm">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-error" id="setup-error"></div>
+    <button class="pin-btn" onclick="submitSetupPin()">Set PIN</button>
+  </div>
+  <!-- Unlock card (PIN already set) -->
+  <div id="pin-unlock" class="pin-card" style="display:none">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">Admin PIN</div>
+    <div class="pin-sub">Enter your PIN to continue</div>
+    <div class="pin-inputs" id="unlock-pin">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-error" id="unlock-error"></div>
+    <button class="pin-btn" onclick="submitUnlockPin()">Unlock</button>
+  </div>
+</div>
+
+<!-- ── Change PIN Modal ─────────────────────────────────────────────────────── -->
+<div id="change-pin-overlay">
+  <div class="pin-card">
+    <div class="pin-icon">🔑</div>
+    <div class="pin-title">Change PIN</div>
+    <div class="pin-label">Current PIN</div>
+    <div class="pin-inputs" id="change-current">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-label">New PIN</div>
+    <div class="pin-inputs" id="change-new">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-label">Confirm New PIN</div>
+    <div class="pin-inputs" id="change-confirm">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-error" id="change-error"></div>
+    <div style="display:flex; gap:10px;">
+      <button class="pin-btn pin-btn-cancel" onclick="closeChangePin()">Cancel</button>
+      <button class="pin-btn" onclick="submitChangePin()">Change PIN</button>
+    </div>
+  </div>
+</div>
+
 <nav>
   <div class="brand" id="nav-shop-name">Queue Admin</div>
   <div class="links">
+    <button class="btn-change-pin" onclick="openChangePin()" title="Change PIN">🔑</button>
     <a href="/tv" target="_blank">📺 TV</a>
     <a href="/settings">⚙️ Settings</a>
   </div>
@@ -262,12 +397,182 @@
 
 <footer>
   <a href="https://github.com/mrkaqz/queue" target="_blank">github.com/mrkaqz/queue</a>
-  &nbsp;·&nbsp; v1.0.4 &nbsp;·&nbsp; 2026-03-12 &nbsp;·&nbsp; MIT License
+  &nbsp;·&nbsp; v1.0.5 &nbsp;·&nbsp; 2026-03-12 &nbsp;·&nbsp; MIT License
 </footer>
 
 <div id="toast"></div>
 
 <script>
+  // ── Auth helpers ──────────────────────────────────────────────────────────
+  const TOKEN_KEY  = 'admin_token';
+  const getToken   = () => sessionStorage.getItem(TOKEN_KEY);
+  const saveToken  = t  => sessionStorage.setItem(TOKEN_KEY, t);
+  const clearToken = () => sessionStorage.removeItem(TOKEN_KEY);
+
+  function authHeaders() {
+    return { 'Authorization': 'Bearer ' + (getToken() || ''), 'Content-Type': 'application/json' };
+  }
+
+  async function checkAuth() {
+    try {
+      const res = await fetch('/api/auth/status');
+      const { pin_set } = await res.json();
+      if (!pin_set)        showSetupModal();
+      else if (getToken()) revealAdmin();
+      else                 showUnlockModal();
+    } catch(e) { showUnlockModal(); }
+  }
+
+  function showSetupModal() {
+    document.getElementById('pin-setup').style.display  = '';
+    document.getElementById('pin-unlock').style.display = 'none';
+    document.getElementById('pin-overlay').style.display = 'flex';
+    setTimeout(() => document.querySelector('#setup-pin .pin-input').focus(), 50);
+  }
+
+  function showUnlockModal() {
+    document.getElementById('pin-setup').style.display  = 'none';
+    document.getElementById('pin-unlock').style.display = '';
+    document.getElementById('pin-overlay').style.display = 'flex';
+    setTimeout(() => document.querySelector('#unlock-pin .pin-input').focus(), 50);
+  }
+
+  function revealAdmin() {
+    document.getElementById('pin-overlay').style.display = 'none';
+    loadAdminSoundSetting();
+    refreshList();
+    connect();
+  }
+
+  async function submitSetupPin() {
+    const pin     = getPinValue('setup-pin');
+    const confirm = getPinValue('setup-confirm');
+    document.getElementById('setup-error').textContent = '';
+    if (pin.length !== 4) { document.getElementById('setup-error').textContent = 'Enter all 4 digits'; return; }
+    if (pin !== confirm)  {
+      document.getElementById('setup-error').textContent = 'PINs do not match';
+      shakePins('setup-pin'); shakePins('setup-confirm'); return;
+    }
+    try {
+      const res  = await fetch('/api/auth/set-pin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (data.ok) { saveToken(data.token); revealAdmin(); }
+      else { document.getElementById('setup-error').textContent = data.detail || 'Error'; }
+    } catch(e) { document.getElementById('setup-error').textContent = 'Network error'; }
+  }
+
+  async function submitUnlockPin() {
+    const pin = getPinValue('unlock-pin');
+    document.getElementById('unlock-error').textContent = '';
+    if (pin.length !== 4) return;
+    try {
+      const res  = await fetch('/api/auth/verify-pin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        saveToken(data.token);
+        revealAdmin();
+      } else {
+        document.getElementById('unlock-error').textContent = 'Incorrect PIN';
+        shakePins('unlock-pin');
+        clearPinInputs('unlock-pin');
+      }
+    } catch(e) { document.getElementById('unlock-error').textContent = 'Network error'; }
+  }
+
+  function openChangePin() {
+    document.getElementById('change-error').textContent = '';
+    clearPinInputs('change-current');
+    clearPinInputs('change-new');
+    clearPinInputs('change-confirm');
+    document.getElementById('change-pin-overlay').style.display = 'flex';
+    setTimeout(() => document.querySelector('#change-current .pin-input').focus(), 50);
+  }
+
+  function closeChangePin() {
+    document.getElementById('change-pin-overlay').style.display = 'none';
+  }
+
+  async function submitChangePin() {
+    const current = getPinValue('change-current');
+    const newPin  = getPinValue('change-new');
+    const confirm = getPinValue('change-confirm');
+    document.getElementById('change-error').textContent = '';
+    if (current.length !== 4 || newPin.length !== 4 || confirm.length !== 4) {
+      document.getElementById('change-error').textContent = 'Enter all 4 digits in each field'; return;
+    }
+    if (newPin !== confirm) {
+      document.getElementById('change-error').textContent = 'New PINs do not match';
+      shakePins('change-new'); shakePins('change-confirm'); return;
+    }
+    try {
+      const res  = await fetch('/api/auth/change-pin', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ current_pin: current, new_pin: newPin }),
+      });
+      if (res.status === 401) { clearToken(); closeChangePin(); showUnlockModal(); return; }
+      const data = await res.json();
+      if (data.ok) { closeChangePin(); showToast('PIN updated ✓'); }
+      else {
+        document.getElementById('change-error').textContent = 'Incorrect current PIN';
+        shakePins('change-current'); clearPinInputs('change-current');
+      }
+    } catch(e) { document.getElementById('change-error').textContent = 'Network error'; }
+  }
+
+  // ── PIN input helpers ─────────────────────────────────────────────────────
+  function getPinValue(groupId) {
+    return [...document.querySelectorAll(`#${groupId} .pin-input`)].map(i => i.value).join('');
+  }
+  function clearPinInputs(groupId) {
+    const inputs = [...document.querySelectorAll(`#${groupId} .pin-input`)];
+    inputs.forEach(i => i.value = '');
+    if (inputs[0]) inputs[0].focus();
+  }
+  function shakePins(groupId) {
+    const el = document.getElementById(groupId);
+    if (!el) return;
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+    el.addEventListener('animationend', () => el.classList.remove('shake'), { once: true });
+  }
+  function initPinInputs() {
+    document.querySelectorAll('.pin-input').forEach(input => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(-1);
+        const siblings = [...input.closest('.pin-inputs').querySelectorAll('.pin-input')];
+        const idx = siblings.indexOf(input);
+        if (input.value && idx < siblings.length - 1) siblings[idx + 1].focus();
+      });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !input.value) {
+          const siblings = [...input.closest('.pin-inputs').querySelectorAll('.pin-input')];
+          const idx = siblings.indexOf(input);
+          if (idx > 0) { siblings[idx - 1].value = ''; siblings[idx - 1].focus(); }
+        }
+        if (e.key === 'Enter') {
+          const btn = input.closest('.pin-card').querySelector('.pin-btn:not(.pin-btn-cancel)');
+          if (btn) btn.click();
+        }
+      });
+      input.addEventListener('paste', e => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        const siblings = [...input.closest('.pin-inputs').querySelectorAll('.pin-input')];
+        const start = siblings.indexOf(input);
+        [...text].slice(0, siblings.length - start).forEach((ch, i) => { siblings[start + i].value = ch; });
+        siblings[Math.min(start + text.length, siblings.length - 1)].focus();
+      });
+    });
+  }
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
   const currentEl  = document.getElementById('current-val');
   const nextEl     = document.getElementById('next-val');
   const waitingEl  = document.getElementById('waiting-val');
@@ -286,8 +591,8 @@
   }
 
   // ── Audio playback ────────────────────────────────────────────────────────
-  let soundOutput = 'tv'; // 'tv' | 'admin' | 'both'
-  let audioQueue = [];
+  let soundOutput  = 'tv';
+  let audioQueue   = [];
   let audioPlaying = false;
   let audioUnlocked = false;
 
@@ -300,14 +605,11 @@
     audio.onerror = playNext;
     audio.play().catch(playNext);
   }
-
   function enqueueAudio(urls) {
     if (soundOutput === 'tv' || !urls || !urls.length) return;
     audioQueue.push(...urls);
     if (!audioPlaying) playNext();
   }
-
-  // Unlock audio on first user interaction (iOS/autoplay policy)
   function unlockAudio() {
     if (audioUnlocked) return;
     const silent = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAA' +
@@ -318,24 +620,24 @@
 
   async function loadAdminSoundSetting() {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/settings', { headers: authHeaders() });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
       const data = await res.json();
       soundOutput = data.admin_sound || 'tv';
-    } catch (e) { /* ignore */ }
+    } catch(e) { /* ignore */ }
   }
 
   // ── API ───────────────────────────────────────────────────────────────────
   async function action(endpoint) {
     try {
-      const res = await fetch(`/api/queue/${endpoint}`, { method: 'POST' });
+      const res = await fetch(`/api/queue/${endpoint}`, { method: 'POST', headers: authHeaders() });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
       const data = await res.json();
       if (data.message) showToast(data.message);
       else if (endpoint === 'remove-last' && data.number_display) showToast(`Removed: ${data.number_display}`);
       else if (data.number_display) showToast(`Called: ${data.number_display}`);
       await refreshList();
-    } catch (e) {
-      showToast('Error: ' + e.message);
-    }
+    } catch(e) { showToast('Error: ' + e.message); }
   }
 
   function confirmReset() {
@@ -345,9 +647,10 @@
   async function refreshList() {
     try {
       const [listRes, statusRes] = await Promise.all([
-        fetch('/api/queue/list'),
+        fetch('/api/queue/list',   { headers: authHeaders() }),
         fetch('/api/queue/status'),
       ]);
+      if (listRes.status === 401) { clearToken(); showUnlockModal(); return; }
       const list   = await listRes.json();
       const status = await statusRes.json();
 
@@ -355,12 +658,7 @@
       nextEl.textContent    = status.next    || '—';
       waitingEl.textContent = status.waiting ?? '0';
 
-      if (!list.length) {
-        tbody.innerHTML = '';
-        tbody.appendChild(emptyRow);
-        return;
-      }
-
+      if (!list.length) { tbody.innerHTML = ''; tbody.appendChild(emptyRow); return; }
       tbody.innerHTML = list.map(entry => `
         <tr>
           <td>${entry.id}</td>
@@ -370,9 +668,7 @@
           <td>${entry.called_at ? fmtTime(entry.called_at) : '—'}</td>
         </tr>
       `).join('');
-    } catch (e) {
-      console.error(e);
-    }
+    } catch(e) { console.error(e); }
   }
 
   function fmtTime(ts) {
@@ -386,12 +682,7 @@
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws`);
-
-    ws.onopen = () => {
-      connBadge.textContent = 'Live';
-      connBadge.className = 'connected';
-    };
-
+    ws.onopen = () => { connBadge.textContent = 'Live'; connBadge.className = 'connected'; };
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.event === 'init') {
@@ -400,31 +691,20 @@
         nextEl.textContent     = msg.status?.next    || '—';
         waitingEl.textContent  = msg.status?.waiting ?? '0';
       }
-      // Refresh list on any queue event
-      if (msg.event?.startsWith('queue_') || msg.event === 'init') {
-        refreshList();
-      }
-      // Play audio on announcement events
-      if (['queue_called', 'queue_recalled', 'queue_skipped'].includes(msg.event)) {
-        enqueueAudio(msg.audio_urls);
-      }
+      if (msg.event?.startsWith('queue_') || msg.event === 'init') refreshList();
+      if (['queue_called', 'queue_recalled', 'queue_skipped'].includes(msg.event)) enqueueAudio(msg.audio_urls);
       if (msg.event === 'settings_updated') {
         shopNameEl.textContent = msg.shop_name || 'Queue Admin';
         if (msg.admin_sound !== undefined) soundOutput = msg.admin_sound;
       }
     };
-
-    ws.onclose = () => {
-      connBadge.textContent = 'Offline';
-      connBadge.className = 'disconnected';
-      setTimeout(connect, 3000);
-    };
+    ws.onclose = () => { connBadge.textContent = 'Offline'; connBadge.className = 'disconnected'; setTimeout(connect, 3000); };
     ws.onerror = () => ws.close();
   }
 
-  loadAdminSoundSetting();
-  refreshList();
-  connect();
+  // ── Init ──────────────────────────────────────────────────────────────────
+  initPinInputs();
+  checkAuth();
 </script>
 </body>
 </html>

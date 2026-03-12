@@ -12,6 +12,7 @@ from app.websocket import manager
 from app.routers import queue as queue_router
 from app.routers import settings as settings_router
 from app.routers import push as push_router
+from app.routers import auth as auth_router
 
 STATIC_DIR = Path(__file__).parent / "static"
 AUDIO_DIR = db.DATA_DIR / "audio"
@@ -105,6 +106,7 @@ app.mount("/logo",  StaticFiles(directory=str(LOGO_DIR)),  name="logo")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # API routers
+app.include_router(auth_router.router)
 app.include_router(queue_router.router)
 app.include_router(settings_router.router)
 app.include_router(push_router.router)

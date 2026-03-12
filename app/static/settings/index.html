@@ -125,9 +125,93 @@
       pointer-events: none;
     }
     #toast.show { opacity: 1; }
+
+    /* ── PIN Overlay ──────────────────────────────────────────────────────── */
+    #pin-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,0.95);
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .pin-card {
+      background: #fff; border-radius: 16px;
+      padding: 36px 32px; width: 340px; max-width: 90vw;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+    }
+    .pin-icon  { font-size: 2.4rem; margin-bottom: 10px; }
+    .pin-title { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+    .pin-sub   { font-size: 0.82rem; color: #64748b; margin-bottom: 22px; }
+    .pin-label { font-size: 0.78rem; font-weight: 600; color: #374151; text-align: left; margin-bottom: 6px; margin-top: 4px; }
+    .pin-inputs { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; }
+    .pin-input {
+      width: 52px; height: 58px; text-align: center;
+      font-size: 1.6rem; font-weight: 700;
+      border: 2px solid #e2e8f0; border-radius: 10px;
+      background: #f8fafc; color: #1e293b;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+    .pin-input:focus { border-color: #2563eb; outline: none; background: #fff; }
+    .pin-input::-webkit-outer-spin-button,
+    .pin-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .pin-error { color: #dc2626; font-size: 0.8rem; min-height: 18px; margin-bottom: 10px; }
+    .pin-btn {
+      width: 100%; padding: 13px; border: none; border-radius: 8px;
+      background: #2563eb; color: #fff; font-size: 0.97rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .pin-btn:hover    { background: #1d4ed8; }
+    .pin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60%  { transform: translateX(-8px); }
+      40%,80%  { transform: translateX(8px); }
+    }
+    .shake { animation: shake 0.35s ease; }
   </style>
 </head>
 <body>
+
+<!-- ── PIN Overlay ──────────────────────────────────────────────────────────── -->
+<div id="pin-overlay">
+  <!-- Setup card (first time — no PIN set) -->
+  <div id="pin-setup" class="pin-card">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">Set Up Admin PIN</div>
+    <div class="pin-sub">Choose a 4-digit PIN to secure the admin and settings pages</div>
+    <div class="pin-label">New PIN</div>
+    <div class="pin-inputs" id="setup-pin">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-label">Confirm PIN</div>
+    <div class="pin-inputs" id="setup-confirm">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-error" id="setup-error"></div>
+    <button class="pin-btn" onclick="submitSetupPin()">Set PIN</button>
+  </div>
+  <!-- Unlock card (PIN already set) -->
+  <div id="pin-unlock" class="pin-card" style="display:none">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">Admin PIN</div>
+    <div class="pin-sub">Enter your PIN to access settings</div>
+    <div class="pin-inputs" id="unlock-pin">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-error" id="unlock-error"></div>
+    <button class="pin-btn" onclick="submitUnlockPin()">Unlock</button>
+  </div>
+</div>
 
 <nav>
   <div class="brand">⚙️ Settings</div>
@@ -277,14 +361,143 @@
 <div id="toast"></div>
 
 <script>
+  // ── Auth helpers ──────────────────────────────────────────────────────────
+  const TOKEN_KEY  = 'admin_token';
+  const getToken   = () => sessionStorage.getItem(TOKEN_KEY);
+  const saveToken  = t  => sessionStorage.setItem(TOKEN_KEY, t);
+  const clearToken = () => sessionStorage.removeItem(TOKEN_KEY);
+
+  function authHeaders() {
+    return { 'Authorization': 'Bearer ' + (getToken() || ''), 'Content-Type': 'application/json' };
+  }
+  function authOnlyHeaders() {
+    return { 'Authorization': 'Bearer ' + (getToken() || '') };
+  }
+
+  async function checkAuth() {
+    try {
+      const res = await fetch('/api/auth/status');
+      const { pin_set } = await res.json();
+      if (!pin_set)        showSetupModal();
+      else if (getToken()) revealSettings();
+      else                 showUnlockModal();
+    } catch(e) { showUnlockModal(); }
+  }
+
+  function showSetupModal() {
+    document.getElementById('pin-setup').style.display  = '';
+    document.getElementById('pin-unlock').style.display = 'none';
+    document.getElementById('pin-overlay').style.display = 'flex';
+    setTimeout(() => document.querySelector('#setup-pin .pin-input').focus(), 50);
+  }
+
+  function showUnlockModal() {
+    document.getElementById('pin-setup').style.display  = 'none';
+    document.getElementById('pin-unlock').style.display = '';
+    document.getElementById('pin-overlay').style.display = 'flex';
+    setTimeout(() => document.querySelector('#unlock-pin .pin-input').focus(), 50);
+  }
+
+  function revealSettings() {
+    document.getElementById('pin-overlay').style.display = 'none';
+    loadSettings();
+  }
+
+  async function submitSetupPin() {
+    const pin     = getPinValue('setup-pin');
+    const confirm = getPinValue('setup-confirm');
+    document.getElementById('setup-error').textContent = '';
+    if (pin.length !== 4) { document.getElementById('setup-error').textContent = 'Enter all 4 digits'; return; }
+    if (pin !== confirm)  {
+      document.getElementById('setup-error').textContent = 'PINs do not match';
+      shakePins('setup-pin'); shakePins('setup-confirm'); return;
+    }
+    try {
+      const res  = await fetch('/api/auth/set-pin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (data.ok) { saveToken(data.token); revealSettings(); }
+      else { document.getElementById('setup-error').textContent = data.detail || 'Error'; }
+    } catch(e) { document.getElementById('setup-error').textContent = 'Network error'; }
+  }
+
+  async function submitUnlockPin() {
+    const pin = getPinValue('unlock-pin');
+    document.getElementById('unlock-error').textContent = '';
+    if (pin.length !== 4) return;
+    try {
+      const res  = await fetch('/api/auth/verify-pin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (data.ok) { saveToken(data.token); revealSettings(); }
+      else {
+        document.getElementById('unlock-error').textContent = 'Incorrect PIN';
+        shakePins('unlock-pin');
+        clearPinInputs('unlock-pin');
+      }
+    } catch(e) { document.getElementById('unlock-error').textContent = 'Network error'; }
+  }
+
+  // ── PIN input helpers ─────────────────────────────────────────────────────
+  function getPinValue(groupId) {
+    return [...document.querySelectorAll(`#${groupId} .pin-input`)].map(i => i.value).join('');
+  }
+  function clearPinInputs(groupId) {
+    const inputs = [...document.querySelectorAll(`#${groupId} .pin-input`)];
+    inputs.forEach(i => i.value = '');
+    if (inputs[0]) inputs[0].focus();
+  }
+  function shakePins(groupId) {
+    const el = document.getElementById(groupId);
+    if (!el) return;
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+    el.addEventListener('animationend', () => el.classList.remove('shake'), { once: true });
+  }
+  function initPinInputs() {
+    document.querySelectorAll('.pin-input').forEach(input => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(-1);
+        const siblings = [...input.closest('.pin-inputs').querySelectorAll('.pin-input')];
+        const idx = siblings.indexOf(input);
+        if (input.value && idx < siblings.length - 1) siblings[idx + 1].focus();
+      });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !input.value) {
+          const siblings = [...input.closest('.pin-inputs').querySelectorAll('.pin-input')];
+          const idx = siblings.indexOf(input);
+          if (idx > 0) { siblings[idx - 1].value = ''; siblings[idx - 1].focus(); }
+        }
+        if (e.key === 'Enter') {
+          const btn = input.closest('.pin-card').querySelector('.pin-btn');
+          if (btn) btn.click();
+        }
+      });
+      input.addEventListener('paste', e => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        const siblings = [...input.closest('.pin-inputs').querySelectorAll('.pin-input')];
+        const start = siblings.indexOf(input);
+        [...text].slice(0, siblings.length - start).forEach((ch, i) => { siblings[start + i].value = ch; });
+        siblings[Math.min(start + text.length, siblings.length - 1)].focus();
+      });
+    });
+  }
+
+  // ── Settings ──────────────────────────────────────────────────────────────
   const FIELDS = [
     'shop_name', 'base_url', 'queue_padding', 'daily_reset_time',
     'announcement_message', 'announcement_language', 'announcement_sound',
     'admin_sound', 'thai_voice', 'english_voice', 'vapid_email', 'vapid_public_key',
   ];
 
-  const toast     = document.getElementById('toast');
-  const saveBtn   = document.getElementById('save-btn');
+  const toast      = document.getElementById('toast');
+  const saveBtn    = document.getElementById('save-btn');
   const saveStatus = document.getElementById('save-status');
 
   let toastTimer;
@@ -306,9 +519,10 @@
     try {
       const res = await fetch('/api/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(payload),
       });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
       if (res.ok) {
         saveStatus.style.display = 'inline';
         setTimeout(() => { saveStatus.style.display = 'none'; }, 3000);
@@ -316,7 +530,7 @@
       } else {
         showToast('Save failed', '#dc2626');
       }
-    } catch (e) {
+    } catch(e) {
       showToast('Error: ' + e.message, '#dc2626');
     } finally {
       saveBtn.disabled = false;
@@ -325,7 +539,8 @@
 
   async function loadSettings() {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/settings', { headers: authHeaders() });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
       const data = await res.json();
       FIELDS.forEach(f => {
         const el = document.getElementById(f);
@@ -336,7 +551,7 @@
         document.getElementById('logo-preview-wrap').style.display = 'block';
         document.getElementById('remove-logo-btn').style.display = 'inline-block';
       }
-    } catch (e) {
+    } catch(e) {
       showToast('Failed to load settings', '#dc2626');
     }
   }
@@ -346,20 +561,22 @@
     const formData = new FormData();
     formData.append('file', input.files[0]);
     try {
-      const res = await fetch('/api/settings/logo', { method: 'POST', body: formData });
+      const res = await fetch('/api/settings/logo', { method: 'POST', body: formData, headers: authOnlyHeaders() });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
       const data = await res.json();
       if (data.error) { showToast(data.error, '#dc2626'); return; }
       document.getElementById('logo-preview').src = data.logo_url + '?t=' + Date.now();
       document.getElementById('logo-preview-wrap').style.display = 'block';
       document.getElementById('remove-logo-btn').style.display = 'inline-block';
       showToast('Logo uploaded!', '#166534');
-    } catch (e) {
+    } catch(e) {
       showToast('Upload failed: ' + e.message, '#dc2626');
     }
   }
 
   async function removeLogo() {
-    await fetch('/api/settings/logo', { method: 'DELETE' });
+    const res = await fetch('/api/settings/logo', { method: 'DELETE', headers: authOnlyHeaders() });
+    if (res.status === 401) { clearToken(); showUnlockModal(); return; }
     document.getElementById('logo-preview').src = '';
     document.getElementById('logo-preview-wrap').style.display = 'none';
     document.getElementById('remove-logo-btn').style.display = 'none';
@@ -367,7 +584,9 @@
     showToast('Logo removed');
   }
 
-  loadSettings();
+  // ── Init ──────────────────────────────────────────────────────────────────
+  initPinInputs();
+  checkAuth();
 </script>
 </body>
 </html>
