@@ -27,6 +27,7 @@ A lightweight, self-hosted queue management system designed for small businesses
 | Admin | `/admin` | Operator control panel |
 | Settings | `/settings` | App configuration |
 | Phone Status | `/status` | Customer-facing page via QR code |
+| Statistics | `/stats` | Queue analytics — volume, outcomes, wait times, peak hours |
 
 ---
 
@@ -71,7 +72,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:1.0.8        # specific version
+ghcr.io/mrkaqz/queue:2.0.0        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
