@@ -126,11 +126,19 @@
     }
     #toast.show { opacity: 1; }
 
+    /* ── PIN Toggle ──────────────────────────────────────────────────────── */
+    .pin-toggle-wrap { position:relative; display:inline-block; width:44px; height:24px; cursor:pointer; flex-shrink:0; }
+    .pin-toggle-wrap input { opacity:0; width:0; height:0; }
+    .pin-toggle-slider { position:absolute; inset:0; background:#cbd5e1; border-radius:12px; transition:0.2s; }
+    .pin-toggle-slider:before { content:''; position:absolute; width:18px; height:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+    .pin-toggle-wrap input:checked + .pin-toggle-slider { background:#2563eb; }
+    .pin-toggle-wrap input:checked + .pin-toggle-slider:before { transform:translateX(20px); }
+
     /* ── PIN Overlay ──────────────────────────────────────────────────────── */
     #pin-overlay {
       position: fixed; inset: 0; z-index: 9999;
       background: rgba(15,23,42,0.95);
-      display: flex; align-items: center; justify-content: center;
+      display: none; align-items: center; justify-content: center;
       backdrop-filter: blur(4px);
     }
     .pin-card {
@@ -169,16 +177,42 @@
       40%,80%  { transform: translateX(8px); }
     }
     .shake { animation: shake 0.35s ease; }
+
+    /* ── PIN Modals (setup / disable / change) ───────────────────────────── */
+    .pin-modal {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,0.85);
+      display: none; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .pin-btn-cancel { background: #e2e8f0 !important; color: #1e293b !important; }
+    .pin-btn-cancel:hover { background: #cbd5e1 !important; }
   </style>
 </head>
 <body>
 
-<!-- ── PIN Overlay ──────────────────────────────────────────────────────────── -->
+<!-- ── PIN Overlay (unlock on page load) ────────────────────────────────────── -->
 <div id="pin-overlay">
-  <!-- Setup card (first time — no PIN set) -->
-  <div id="pin-setup" class="pin-card">
+  <div id="pin-unlock" class="pin-card">
     <div class="pin-icon">🔐</div>
-    <div class="pin-title">Set Up Admin PIN</div>
+    <div class="pin-title">Admin PIN</div>
+    <div class="pin-sub">Enter your PIN to access settings</div>
+    <div class="pin-inputs" id="unlock-pin">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-error" id="unlock-error"></div>
+    <button class="pin-btn" onclick="submitUnlockPin()">Unlock</button>
+  </div>
+</div>
+
+<!-- ── PIN Setup Modal (triggered by toggle ON) ──────────────────────────────── -->
+<div id="pin-setup-modal" class="pin-modal">
+  <div class="pin-card">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">Enable PIN Protection</div>
     <div class="pin-sub">Choose a 4-digit PIN to secure the admin and settings pages</div>
     <div class="pin-label">New PIN</div>
     <div class="pin-inputs" id="setup-pin">
@@ -195,21 +229,64 @@
       <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
     </div>
     <div class="pin-error" id="setup-error"></div>
-    <button class="pin-btn" onclick="submitSetupPin()">Set PIN</button>
+    <div style="display:flex; gap:10px;">
+      <button class="pin-btn pin-btn-cancel" onclick="cancelEnablePin()">Cancel</button>
+      <button class="pin-btn" onclick="submitEnablePin()">Enable PIN</button>
+    </div>
   </div>
-  <!-- Unlock card (PIN already set) -->
-  <div id="pin-unlock" class="pin-card" style="display:none">
-    <div class="pin-icon">🔐</div>
-    <div class="pin-title">Admin PIN</div>
-    <div class="pin-sub">Enter your PIN to access settings</div>
-    <div class="pin-inputs" id="unlock-pin">
+</div>
+
+<!-- ── PIN Disable Modal (triggered by toggle OFF) ───────────────────────────── -->
+<div id="pin-disable-modal" class="pin-modal">
+  <div class="pin-card">
+    <div class="pin-icon">🔓</div>
+    <div class="pin-title">Disable PIN Protection</div>
+    <div class="pin-sub">Enter your current PIN to confirm</div>
+    <div class="pin-inputs" id="disable-pin">
       <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
       <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
       <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
       <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
     </div>
-    <div class="pin-error" id="unlock-error"></div>
-    <button class="pin-btn" onclick="submitUnlockPin()">Unlock</button>
+    <div class="pin-error" id="disable-error"></div>
+    <div style="display:flex; gap:10px;">
+      <button class="pin-btn pin-btn-cancel" onclick="cancelDisablePin()">Cancel</button>
+      <button class="pin-btn" style="background:#dc2626;" onclick="submitDisablePin()">Disable PIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Change PIN Modal ───────────────────────────────────────────────────────── -->
+<div id="change-pin-modal" class="pin-modal">
+  <div class="pin-card">
+    <div class="pin-icon">🔑</div>
+    <div class="pin-title">Change PIN</div>
+    <div class="pin-label">Current PIN</div>
+    <div class="pin-inputs" id="change-current">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-label">New PIN</div>
+    <div class="pin-inputs" id="change-new">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-label">Confirm New PIN</div>
+    <div class="pin-inputs" id="change-confirm">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-error" id="change-error"></div>
+    <div style="display:flex; gap:10px;">
+      <button class="pin-btn pin-btn-cancel" onclick="closeChangePinModal()">Cancel</button>
+      <button class="pin-btn" onclick="submitChangePin()">Change PIN</button>
+    </div>
   </div>
 </div>
 
@@ -357,6 +434,29 @@
     </div>
   </div>
 
+  <!-- Security -->
+  <div class="card">
+    <div class="card-title">Security</div>
+    <div class="field">
+      <label>PIN Protection</label>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:4px; margin-bottom:6px;">
+        <label class="pin-toggle-wrap">
+          <input type="checkbox" id="pin-toggle" onchange="handlePinToggle(this)" />
+          <span class="pin-toggle-slider"></span>
+        </label>
+        <span id="pin-status-text" style="font-size:0.85rem; color:#64748b;">Disabled</span>
+      </div>
+      <span class="hint">Require a 4-digit PIN to access the admin and settings pages.</span>
+    </div>
+    <div id="change-pin-section" style="display:none; margin-top:4px;">
+      <button onclick="openChangePinModal()"
+        style="background:#e2e8f0; color:#1e293b; border:none; border-radius:8px;
+               padding:10px 18px; font-size:0.9rem; font-weight:700; cursor:pointer;">
+        Change PIN
+      </button>
+    </div>
+  </div>
+
   <!-- Save -->
   <div class="card" style="display:flex; align-items:center;">
     <button class="btn-save" id="save-btn" onclick="saveSettings()">Save Settings</button>
@@ -384,22 +484,13 @@
     try {
       const res = await fetch('/api/auth/status');
       const { pin_set } = await res.json();
-      if (!pin_set)        showSetupModal();
+      if (!pin_set)        revealSettings();
       else if (getToken()) revealSettings();
       else                 showUnlockModal();
-    } catch(e) { showUnlockModal(); }
-  }
-
-  function showSetupModal() {
-    document.getElementById('pin-setup').style.display  = '';
-    document.getElementById('pin-unlock').style.display = 'none';
-    document.getElementById('pin-overlay').style.display = 'flex';
-    setTimeout(() => document.querySelector('#setup-pin .pin-input').focus(), 50);
+    } catch(e) { revealSettings(); }
   }
 
   function showUnlockModal() {
-    document.getElementById('pin-setup').style.display  = 'none';
-    document.getElementById('pin-unlock').style.display = '';
     document.getElementById('pin-overlay').style.display = 'flex';
     setTimeout(() => document.querySelector('#unlock-pin .pin-input').focus(), 50);
   }
@@ -407,9 +498,46 @@
   function revealSettings() {
     document.getElementById('pin-overlay').style.display = 'none';
     loadSettings();
+    updatePinToggle();
   }
 
-  async function submitSetupPin() {
+  async function updatePinToggle() {
+    try {
+      const { pin_set } = await (await fetch('/api/auth/status')).json();
+      document.getElementById('pin-toggle').checked = pin_set;
+      document.getElementById('pin-status-text').textContent = pin_set ? 'Enabled' : 'Disabled';
+      document.getElementById('pin-status-text').style.color = pin_set ? '#16a34a' : '#64748b';
+      document.getElementById('change-pin-section').style.display = pin_set ? 'block' : 'none';
+    } catch(e) {}
+  }
+
+  // ── PIN toggle handlers ───────────────────────────────────────────────────
+  function handlePinToggle(checkbox) {
+    if (checkbox.checked) {
+      checkbox.checked = false;  // revert; restored on success
+      clearPinInputs('setup-pin');
+      clearPinInputs('setup-confirm');
+      document.getElementById('setup-error').textContent = '';
+      document.getElementById('pin-setup-modal').style.display = 'flex';
+      setTimeout(() => document.querySelector('#setup-pin .pin-input').focus(), 50);
+    } else {
+      checkbox.checked = true;   // revert; restored on success
+      clearPinInputs('disable-pin');
+      document.getElementById('disable-error').textContent = '';
+      document.getElementById('pin-disable-modal').style.display = 'flex';
+      setTimeout(() => document.querySelector('#disable-pin .pin-input').focus(), 50);
+    }
+  }
+
+  function cancelEnablePin() {
+    document.getElementById('pin-setup-modal').style.display = 'none';
+  }
+
+  function cancelDisablePin() {
+    document.getElementById('pin-disable-modal').style.display = 'none';
+  }
+
+  async function submitEnablePin() {
     const pin     = getPinValue('setup-pin');
     const confirm = getPinValue('setup-confirm');
     document.getElementById('setup-error').textContent = '';
@@ -424,9 +552,78 @@
         body: JSON.stringify({ pin }),
       });
       const data = await res.json();
-      if (data.ok) { saveToken(data.token); revealSettings(); }
-      else { document.getElementById('setup-error').textContent = data.detail || 'Error'; }
+      if (data.ok) {
+        saveToken(data.token);
+        document.getElementById('pin-setup-modal').style.display = 'none';
+        updatePinToggle();
+        showToast('PIN enabled ✓', '#166534');
+      } else {
+        document.getElementById('setup-error').textContent = data.detail || 'Error';
+      }
     } catch(e) { document.getElementById('setup-error').textContent = 'Network error'; }
+  }
+
+  async function submitDisablePin() {
+    const pin = getPinValue('disable-pin');
+    document.getElementById('disable-error').textContent = '';
+    if (pin.length !== 4) return;
+    try {
+      const res  = await fetch('/api/auth/disable-pin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        clearToken();
+        document.getElementById('pin-disable-modal').style.display = 'none';
+        updatePinToggle();
+        showToast('PIN disabled', '#1e293b');
+      } else {
+        document.getElementById('disable-error').textContent = 'Incorrect PIN';
+        shakePins('disable-pin');
+        clearPinInputs('disable-pin');
+      }
+    } catch(e) { document.getElementById('disable-error').textContent = 'Network error'; }
+  }
+
+  function openChangePinModal() {
+    clearPinInputs('change-current');
+    clearPinInputs('change-new');
+    clearPinInputs('change-confirm');
+    document.getElementById('change-error').textContent = '';
+    document.getElementById('change-pin-modal').style.display = 'flex';
+    setTimeout(() => document.querySelector('#change-current .pin-input').focus(), 50);
+  }
+
+  function closeChangePinModal() {
+    document.getElementById('change-pin-modal').style.display = 'none';
+  }
+
+  async function submitChangePin() {
+    const current = getPinValue('change-current');
+    const newPin  = getPinValue('change-new');
+    const confirm = getPinValue('change-confirm');
+    document.getElementById('change-error').textContent = '';
+    if (current.length !== 4 || newPin.length !== 4 || confirm.length !== 4) {
+      document.getElementById('change-error').textContent = 'Enter all 4 digits in each field'; return;
+    }
+    if (newPin !== confirm) {
+      document.getElementById('change-error').textContent = 'New PINs do not match';
+      shakePins('change-new'); shakePins('change-confirm'); return;
+    }
+    try {
+      const res  = await fetch('/api/auth/change-pin', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ current_pin: current, new_pin: newPin }),
+      });
+      if (res.status === 401) { clearToken(); closeChangePinModal(); showUnlockModal(); return; }
+      const data = await res.json();
+      if (data.ok) { closeChangePinModal(); showToast('PIN updated ✓', '#166534'); }
+      else {
+        document.getElementById('change-error').textContent = 'Incorrect current PIN';
+        shakePins('change-current'); clearPinInputs('change-current');
+      }
+    } catch(e) { document.getElementById('change-error').textContent = 'Network error'; }
   }
 
   async function submitUnlockPin() {

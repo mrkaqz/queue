@@ -184,7 +184,7 @@
     #pin-overlay {
       position: fixed; inset: 0; z-index: 9999;
       background: rgba(15,23,42,0.95);
-      display: flex; align-items: center; justify-content: center;
+      display: none; align-items: center; justify-content: center;
       backdrop-filter: blur(4px);
     }
     #change-pin-overlay {
@@ -263,30 +263,8 @@
 
 <!-- ── PIN Overlay ──────────────────────────────────────────────────────────── -->
 <div id="pin-overlay">
-  <!-- Setup card (first time — no PIN set) -->
-  <div id="pin-setup" class="pin-card">
-    <div class="pin-icon">🔐</div>
-    <div class="pin-title">Set Up Admin PIN</div>
-    <div class="pin-sub">Choose a 4-digit PIN to secure this page</div>
-    <div class="pin-label">New PIN</div>
-    <div class="pin-inputs" id="setup-pin">
-      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
-      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
-      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
-      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
-    </div>
-    <div class="pin-label">Confirm PIN</div>
-    <div class="pin-inputs" id="setup-confirm">
-      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
-      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
-      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
-      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
-    </div>
-    <div class="pin-error" id="setup-error"></div>
-    <button class="pin-btn" onclick="submitSetupPin()">Set PIN</button>
-  </div>
-  <!-- Unlock card (PIN already set) -->
-  <div id="pin-unlock" class="pin-card" style="display:none">
+  <!-- Unlock card (PIN set) -->
+  <div id="pin-unlock" class="pin-card">
     <div class="pin-icon">🔐</div>
     <div class="pin-title">Admin PIN</div>
     <div class="pin-sub">Enter your PIN to continue</div>
@@ -338,7 +316,7 @@
 <nav>
   <div class="brand" id="nav-shop-name">Queue Admin</div>
   <div class="links">
-    <button class="btn-change-pin" onclick="openChangePin()" title="Change PIN">🔑</button>
+    <button id="btn-change-pin" class="btn-change-pin" onclick="openChangePin()" title="Change PIN" style="display:none">🔑</button>
     <a href="/tv" target="_blank">📺 TV</a>
     <a href="/settings">⚙️ Settings</a>
   </div>
@@ -397,7 +375,7 @@
 
 <footer>
   <a href="https://github.com/mrkaqz/queue" target="_blank">github.com/mrkaqz/queue</a>
-  &nbsp;·&nbsp; v1.0.5 &nbsp;·&nbsp; 2026-03-12 &nbsp;·&nbsp; MIT License
+  &nbsp;·&nbsp; v1.0.6 &nbsp;·&nbsp; 2026-03-13 &nbsp;·&nbsp; MIT License
 </footer>
 
 <div id="toast"></div>
@@ -417,51 +395,23 @@
     try {
       const res = await fetch('/api/auth/status');
       const { pin_set } = await res.json();
-      if (!pin_set)        showSetupModal();
-      else if (getToken()) revealAdmin();
+      if (!pin_set)        revealAdmin(false);
+      else if (getToken()) revealAdmin(true);
       else                 showUnlockModal();
-    } catch(e) { showUnlockModal(); }
-  }
-
-  function showSetupModal() {
-    document.getElementById('pin-setup').style.display  = '';
-    document.getElementById('pin-unlock').style.display = 'none';
-    document.getElementById('pin-overlay').style.display = 'flex';
-    setTimeout(() => document.querySelector('#setup-pin .pin-input').focus(), 50);
+    } catch(e) { revealAdmin(false); }
   }
 
   function showUnlockModal() {
-    document.getElementById('pin-setup').style.display  = 'none';
-    document.getElementById('pin-unlock').style.display = '';
     document.getElementById('pin-overlay').style.display = 'flex';
     setTimeout(() => document.querySelector('#unlock-pin .pin-input').focus(), 50);
   }
 
-  function revealAdmin() {
+  function revealAdmin(pinSet) {
     document.getElementById('pin-overlay').style.display = 'none';
+    document.getElementById('btn-change-pin').style.display = pinSet ? '' : 'none';
     loadAdminSoundSetting();
     refreshList();
     connect();
-  }
-
-  async function submitSetupPin() {
-    const pin     = getPinValue('setup-pin');
-    const confirm = getPinValue('setup-confirm');
-    document.getElementById('setup-error').textContent = '';
-    if (pin.length !== 4) { document.getElementById('setup-error').textContent = 'Enter all 4 digits'; return; }
-    if (pin !== confirm)  {
-      document.getElementById('setup-error').textContent = 'PINs do not match';
-      shakePins('setup-pin'); shakePins('setup-confirm'); return;
-    }
-    try {
-      const res  = await fetch('/api/auth/set-pin', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin }),
-      });
-      const data = await res.json();
-      if (data.ok) { saveToken(data.token); revealAdmin(); }
-      else { document.getElementById('setup-error').textContent = data.detail || 'Error'; }
-    } catch(e) { document.getElementById('setup-error').textContent = 'Network error'; }
   }
 
   async function submitUnlockPin() {
@@ -476,7 +426,7 @@
       const data = await res.json();
       if (data.ok) {
         saveToken(data.token);
-        revealAdmin();
+        revealAdmin(true);
       } else {
         document.getElementById('unlock-error').textContent = 'Incorrect PIN';
         shakePins('unlock-pin');

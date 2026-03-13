@@ -35,7 +35,11 @@ def _validate_token(token: str) -> bool:
 
 
 async def require_auth(authorization: str = Header(default="")):
-    """FastAPI dependency — raises 401 if the Bearer token is missing or invalid."""
+    """FastAPI dependency — raises 401 if the Bearer token is missing or invalid.
+    If no PIN is configured, all requests are allowed through without a token."""
+    pin_hash = await db.get_setting("admin_pin", "")
+    if not pin_hash:
+        return  # PIN not configured — allow all access
     token = authorization.removeprefix("Bearer ").strip()
     if not _validate_token(token):
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -93,4 +97,16 @@ async def change_pin(data: dict, authorization: str = Header(default="")):
         return {"ok": False, "detail": "Incorrect current PIN"}
 
     await db.set_setting("admin_pin", _hash(new_pin))
+    return {"ok": True}
+
+
+@router.post("/disable-pin")
+async def disable_pin(data: dict):
+    """Disable PIN protection — requires the current PIN to confirm."""
+    pin = str(data.get("pin", "")).strip()
+    stored = await db.get_setting("admin_pin", "")
+    if not stored or _hash(pin) != stored:
+        return {"ok": False, "detail": "Incorrect PIN"}
+    await db.set_setting("admin_pin", "")
+    _sessions.clear()
     return {"ok": True}
