@@ -4,19 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Settings — Queue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       background: #f1f5f9;
       color: #1e293b;
-      font-family: 'Segoe UI', Arial, sans-serif;
+      font-family: 'Inter', 'Noto Sans Thai', 'Segoe UI', Arial, sans-serif;
       min-height: 100vh;
     }
 
     nav {
-      background: #1e293b;
-      color: #f8fafc;
+      background: #0ea5e9;
+      color: #fff;
       padding: 0 24px;
       height: 56px;
       display: flex;
@@ -24,8 +27,8 @@
       justify-content: space-between;
     }
     nav .brand { font-size: 1.2rem; font-weight: 700; }
-    nav .links a { color: #94a3b8; text-decoration: none; margin-left: 20px; font-size: 0.9rem; }
-    nav .links a:hover { color: #f8fafc; }
+    nav .links a { color: #e0f2fe; text-decoration: none; margin-left: 20px; font-size: 0.9rem; }
+    nav .links a:hover { color: #fff; }
 
     main { max-width: 720px; margin: 32px auto; padding: 0 24px; display: flex; flex-direction: column; gap: 24px; }
 
@@ -358,6 +361,29 @@
     </div>
   </div>
 
+  <!-- Security -->
+  <div class="card">
+    <div class="card-title">Security</div>
+    <div class="field">
+      <label>PIN Protection</label>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:4px; margin-bottom:6px;">
+        <label class="pin-toggle-wrap">
+          <input type="checkbox" id="pin-toggle" onchange="handlePinToggle(this)" />
+          <span class="pin-toggle-slider"></span>
+        </label>
+        <span id="pin-status-text" style="font-size:0.85rem; color:#64748b;">Disabled</span>
+      </div>
+      <span class="hint">Require a 4-digit PIN to access the admin and settings pages.</span>
+    </div>
+    <div id="change-pin-section" style="display:none; margin-top:4px;">
+      <button onclick="openChangePinModal()"
+        style="background:#e2e8f0; color:#1e293b; border:none; border-radius:8px;
+               padding:10px 18px; font-size:0.9rem; font-weight:700; cursor:pointer;">
+        Change PIN
+      </button>
+    </div>
+  </div>
+
   <!-- Announcements -->
   <div class="card">
     <div class="card-title">Announcements</div>
@@ -431,29 +457,6 @@
     </div>
     <div class="field">
       <span class="hint">VAPID keys are auto-generated on first startup. To regenerate, clear the keys in the database and restart.</span>
-    </div>
-  </div>
-
-  <!-- Security -->
-  <div class="card">
-    <div class="card-title">Security</div>
-    <div class="field">
-      <label>PIN Protection</label>
-      <div style="display:flex; align-items:center; gap:12px; margin-top:4px; margin-bottom:6px;">
-        <label class="pin-toggle-wrap">
-          <input type="checkbox" id="pin-toggle" onchange="handlePinToggle(this)" />
-          <span class="pin-toggle-slider"></span>
-        </label>
-        <span id="pin-status-text" style="font-size:0.85rem; color:#64748b;">Disabled</span>
-      </div>
-      <span class="hint">Require a 4-digit PIN to access the admin and settings pages.</span>
-    </div>
-    <div id="change-pin-section" style="display:none; margin-top:4px;">
-      <button onclick="openChangePinModal()"
-        style="background:#e2e8f0; color:#1e293b; border:none; border-radius:8px;
-               padding:10px 18px; font-size:0.9rem; font-weight:700; cursor:pointer;">
-        Change PIN
-      </button>
     </div>
   </div>
 

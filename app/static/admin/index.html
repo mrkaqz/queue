@@ -4,20 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin — Queue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       background: #f1f5f9;
       color: #1e293b;
-      font-family: 'Segoe UI', Arial, sans-serif;
+      font-family: 'Inter', 'Noto Sans Thai', 'Segoe UI', Arial, sans-serif;
       min-height: 100vh;
     }
 
     /* Nav */
     nav {
-      background: #1e293b;
-      color: #f8fafc;
+      background: #0ea5e9;
+      color: #fff;
       padding: 0 24px;
       height: 56px;
       display: flex;
@@ -26,26 +29,27 @@
     }
     nav .brand { font-size: 1.2rem; font-weight: 700; }
     nav .links a {
-      color: #94a3b8;
+      color: #e0f2fe;
       text-decoration: none;
       margin-left: 20px;
       font-size: 0.9rem;
     }
-    nav .links a:hover { color: #f8fafc; }
+    nav .links a:hover { color: #fff; }
 
     /* Status strip */
     #status-strip {
-      background: #1e3a5f;
-      color: #e2e8f0;
-      padding: 16px 24px;
+      background: #0284c7;
+      color: #e0f2fe;
+      padding: 12px 24px;
       display: flex;
-      gap: 48px;
+      gap: 36px;
       align-items: center;
+      border-bottom: 1px solid #0369a1;
     }
     .stat { display: flex; flex-direction: column; gap: 4px; }
-    .stat .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; }
+    .stat .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #7dd3fc; }
     .stat .value { font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; color: #f8fafc; }
-    #current-val { color: #60a5fa; }
+    #current-val { color: #fff; }
     #waiting-val  { color: #f59e0b; }
 
     /* Connection badge */
@@ -70,10 +74,10 @@
       padding: 24px;
     }
     .card-title {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.12em;
       color: #64748b;
       margin-bottom: 16px;
     }
@@ -122,7 +126,7 @@
     }
     td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f8fafc; }
+    tr:hover td { background: #f1f5f9; }
 
     .badge {
       display: inline-block;
@@ -168,8 +172,10 @@
       main { padding: 12px; gap: 12px; }
       .card { padding: 16px; }
 
-      #actions { gap: 8px; }
-      .btn { padding: 11px 14px; font-size: 0.88rem; flex: 1; min-width: 130px; }
+      #actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      #actions .btn-primary { grid-column: 1 / -1; }
+      #actions .btn-danger  { grid-column: 1 / -1; }
+      .btn { padding: 11px 14px; font-size: 0.88rem; }
       .btn-primary { font-size: 1rem; padding: 14px 20px; }
 
       /* Table: hide less important columns, keep number + status */
@@ -234,11 +240,11 @@
 
     /* Change PIN button in nav */
     .btn-change-pin {
-      background: none; border: none; color: #94a3b8;
+      background: none; border: none; color: #e0f2fe;
       cursor: pointer; font-size: 0.9rem; margin-left: 20px; padding: 0;
       line-height: 1;
     }
-    .btn-change-pin:hover { color: #f8fafc; }
+    .btn-change-pin:hover { color: #fff; }
 
     /* Toast */
     #toast {
@@ -316,9 +322,9 @@
 <nav>
   <div class="brand" id="nav-shop-name">Queue Admin</div>
   <div class="links">
-    <button id="btn-change-pin" class="btn-change-pin" onclick="openChangePin()" title="Change PIN" style="display:none">🔑</button>
-    <a href="/tv" target="_blank">📺 TV</a>
-    <a href="/settings">⚙️ Settings</a>
+    <button id="btn-change-pin" class="btn-change-pin" onclick="openChangePin()" title="Change PIN" style="display:none">PIN</button>
+    <a href="/tv" target="_blank">TV</a>
+    <a href="/settings">Settings</a>
   </div>
 </nav>
 
@@ -342,13 +348,13 @@
   <div class="card">
     <div class="card-title">Actions</div>
     <div id="actions">
-      <button class="btn btn-primary" onclick="action('call-next')">▶ Call Next</button>
-      <button class="btn btn-success" onclick="action('add')">＋ Add Queue</button>
-      <button class="btn btn-neutral" onclick="action('remove-last')">－ Remove Last</button>
-      <button class="btn btn-warning" onclick="action('recall')">↩ Recall</button>
-      <button class="btn btn-neutral" onclick="action('skip')">⏭ Skip</button>
-      <button class="btn btn-neutral" onclick="action('hold')">⏸ Hold</button>
-      <button class="btn btn-danger" onclick="confirmReset()">✕ Reset</button>
+      <button class="btn btn-primary" onclick="action('call-next')">Call Next &rarr;</button>
+      <button class="btn btn-success" onclick="action('add')">+ Add Queue</button>
+      <button class="btn btn-neutral" onclick="action('remove-last')">&minus; Remove Last</button>
+      <button class="btn btn-warning" onclick="action('recall')">&#8635; Recall</button>
+      <button class="btn btn-neutral" onclick="action('skip')">Skip &rsaquo;&rsaquo;</button>
+      <button class="btn btn-neutral" onclick="action('hold')">Hold</button>
+      <button class="btn btn-danger" onclick="confirmReset()">&times; Reset</button>
     </div>
   </div>
 
@@ -375,7 +381,7 @@
 
 <footer>
   <a href="https://github.com/mrkaqz/queue" target="_blank">github.com/mrkaqz/queue</a>
-  &nbsp;·&nbsp; v1.0.7 &nbsp;·&nbsp; 2026-03-13 &nbsp;·&nbsp; MIT License
+  &nbsp;·&nbsp; v1.0.8 &nbsp;·&nbsp; 2026-03-13 &nbsp;·&nbsp; MIT License
 </footer>
 
 <div id="toast"></div>

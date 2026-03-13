@@ -4,13 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Queue Display</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       background: #ffffff;
       color: #1e293b;
-      font-family: 'Segoe UI', Arial, sans-serif;
+      font-family: 'Inter', 'Noto Sans Thai', 'Segoe UI', Arial, sans-serif;
       height: 100vh;
       display: flex;
       flex-direction: column;
@@ -24,7 +27,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 20px 40px;
-      background: #f8fafc;
+      background: #f7fafe;
       border-bottom: 1px solid #e2e8f0;
     }
     #shop-info {
@@ -94,7 +97,7 @@
     }
     @keyframes flash {
       0%   { transform: scale(1);    color: #1e293b; }
-      30%  { transform: scale(1.06); color: #2563eb; }
+      30%  { transform: scale(1.06); color: #0ea5e9; }
       100% { transform: scale(1);    color: #1e293b; }
     }
 
@@ -110,7 +113,7 @@
       justify-content: center;
       gap: 36px;
       padding: 48px 36px;
-      background: #f8fafc;
+      background: #f7fafe;
       border-left: 1px solid #e2e8f0;
     }
 
