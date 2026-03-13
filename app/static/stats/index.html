@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Statistics — Queue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #f1f5f9;
+      color: #1e293b;
+      font-family: 'Inter', 'Noto Sans Thai', 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* Nav */
+    nav {
+      background: #0ea5e9;
+      color: #fff;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    nav .brand { font-size: 1.2rem; font-weight: 700; }
+    nav .links a {
+      color: #e0f2fe;
+      text-decoration: none;
+      margin-left: 20px;
+      font-size: 0.9rem;
+    }
+    nav .links a:hover { color: #fff; }
+
+    /* Main layout */
+    main { max-width: 1080px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* Card */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 24px;
+    }
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #64748b;
+      margin-bottom: 16px;
+    }
+
+    /* Period bar */
+    #period-bar {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #e2e8f0;
+      color: #64748b;
+      transition: background 0.15s, color 0.15s;
+    }
+    .tab-btn.active { background: #0ea5e9; color: #fff; }
+    .tab-btn:hover:not(.active) { background: #cbd5e1; }
+
+    #date-inputs {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .date-input-group { display: flex; align-items: center; gap: 6px; }
+    .date-input-group label { font-size: 0.8rem; color: #64748b; font-weight: 500; }
+    .date-field {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.88rem;
+      background: #f8fafc;
+      color: #1e293b;
+      font-family: inherit;
+    }
+    .date-field:focus { outline: none; border-color: #0ea5e9; background: #fff; }
+    input[type="number"].date-field { width: 88px; }
+    input[type="date"].date-field   { width: 150px; }
+
+    #btn-load {
+      padding: 9px 22px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #btn-load:hover { background: #1d4ed8; }
+
+    /* KPI row */
+    #kpi-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+    .kpi-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 18px 20px;
+    }
+    .kpi-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #1e293b;
+      line-height: 1;
+    }
+    .kpi-sub {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .kpi-served  .kpi-value { color: #16a34a; }
+    .kpi-skipped .kpi-value { color: #dc2626; }
+    .kpi-wait    .kpi-value { color: #d97706; }
+    .kpi-busiest .kpi-value { font-size: 1.4rem; color: #0ea5e9; }
+
+    /* Charts */
+    .chart-wrap { position: relative; }
+    canvas { max-height: 280px; }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.78rem;
+      color: #94a3b8;
+    }
+    footer a { color: #94a3b8; text-decoration: none; }
+    footer a:hover { color: #64748b; text-decoration: underline; }
+
+    /* ── Mobile ─────────────────────────────────────────────────────────── */
+    @media (max-width: 800px) {
+      #kpi-row { grid-template-columns: repeat(2, 1fr); }
+      #kpi-row .kpi-card:last-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 640px) {
+      nav { padding: 0 14px; }
+      nav .brand { font-size: 1rem; }
+      nav .links a { margin-left: 12px; font-size: 0.8rem; }
+      main { padding: 12px; gap: 12px; }
+      .card { padding: 16px; }
+      #period-bar { padding: 12px 14px; gap: 8px; }
+      canvas { max-height: 220px; }
+      footer { padding: 16px 12px; font-size: 0.72rem; }
+    }
+
+    /* ── PIN Overlay ──────────────────────────────────────────────────────── */
+    #pin-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,0.95);
+      display: none; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .pin-card {
+      background: #fff; border-radius: 16px;
+      padding: 36px 32px; width: 340px; max-width: 90vw;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+    }
+    .pin-icon  { font-size: 2.4rem; margin-bottom: 10px; }
+    .pin-title { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+    .pin-sub   { font-size: 0.82rem; color: #64748b; margin-bottom: 22px; }
+    .pin-inputs { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; }
+    .pin-input {
+      width: 52px; height: 58px; text-align: center;
+      font-size: 1.6rem; font-weight: 700;
+      border: 2px solid #e2e8f0; border-radius: 10px;
+      background: #f8fafc; color: #1e293b;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+    .pin-input:focus { border-color: #2563eb; outline: none; background: #fff; }
+    .pin-input::-webkit-outer-spin-button,
+    .pin-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .pin-error { color: #dc2626; font-size: 0.8rem; min-height: 18px; margin-bottom: 10px; }
+    .pin-btn {
+      width: 100%; padding: 13px; border: none; border-radius: 8px;
+      background: #2563eb; color: #fff; font-size: 0.97rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .pin-btn:hover    { background: #1d4ed8; }
+    .pin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60%  { transform: translateX(-8px); }
+      40%,80%  { transform: translateX(8px); }
+    }
+    .shake { animation: shake 0.35s ease; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #1e293b; color: #f8fafc;
+      padding: 12px 20px; border-radius: 8px;
+      font-size: 0.9rem; opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none; z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Loading state */
+    .loading-overlay {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,0.7);
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 12px; z-index: 10;
+      font-size: 0.9rem; color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── PIN Overlay ──────────────────────────────────────────────────────────── -->
+<div id="pin-overlay">
+  <div id="pin-unlock" class="pin-card">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">Admin PIN</div>
+    <div class="pin-sub">Enter your PIN to continue</div>
+    <div class="pin-inputs" id="unlock-pin">
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+      <input type="password" class="pin-input" maxlength="1" inputmode="numeric" />
+    </div>
+    <div class="pin-error" id="unlock-error"></div>
+    <button class="pin-btn" onclick="submitUnlockPin()">Unlock</button>
+  </div>
+</div>
+
+<nav>
+  <div class="brand" id="nav-shop-name">Queue</div>
+  <div class="links">
+    <a href="/admin">Admin</a>
+    <a href="/settings">Settings</a>
+  </div>
+</nav>
+
+<main>
+  <!-- Period selector -->
+  <div id="period-bar">
+    <button class="tab-btn active" data-period="day">Day</button>
+    <button class="tab-btn" data-period="month">Month</button>
+    <button class="tab-btn" data-period="year">Year</button>
+
+    <div id="date-inputs">
+      <!-- Day view -->
+      <div class="date-input-group" id="inp-day-group">
+        <label for="inp-date">Date</label>
+        <input type="date" id="inp-date" class="date-field" />
+      </div>
+      <!-- Month view (hidden by default) -->
+      <div class="date-input-group" id="inp-month-group" style="display:none">
+        <label for="inp-year-m">Year</label>
+        <input type="number" id="inp-year-m" class="date-field" min="2000" max="2100" />
+        <label for="inp-month">Month</label>
+        <input type="number" id="inp-month" class="date-field" min="1" max="12" />
+      </div>
+      <!-- Year view (hidden by default) -->
+      <div class="date-input-group" id="inp-year-group" style="display:none">
+        <label for="inp-year-y">Year</label>
+        <input type="number" id="inp-year-y" class="date-field" min="2000" max="2100" />
+      </div>
+    </div>
+
+    <button id="btn-load" onclick="fetchStats()">Load</button>
+  </div>
+
+  <!-- KPI cards -->
+  <div id="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Issued</div>
+      <div class="kpi-value" id="kpi-total">—</div>
+    </div>
+    <div class="kpi-card kpi-served">
+      <div class="kpi-label">Served</div>
+      <div class="kpi-value" id="kpi-served">—</div>
+    </div>
+    <div class="kpi-card kpi-skipped">
+      <div class="kpi-label">Skipped / Held</div>
+      <div class="kpi-value" id="kpi-skipped">—</div>
+    </div>
+    <div class="kpi-card kpi-wait">
+      <div class="kpi-label">Avg Wait</div>
+      <div class="kpi-value" id="kpi-wait">—</div>
+      <div class="kpi-sub">minutes</div>
+    </div>
+    <div class="kpi-card kpi-busiest">
+      <div class="kpi-label">Busiest Hour</div>
+      <div class="kpi-value" id="kpi-busiest">—</div>
+      <div class="kpi-sub" id="kpi-busiest-sub"></div>
+    </div>
+  </div>
+
+  <!-- Queue Volume chart -->
+  <div class="card">
+    <div class="card-title">Queue Volume</div>
+    <div class="chart-wrap">
+      <canvas id="chart-volume"></canvas>
+    </div>
+  </div>
+
+  <!-- Outcome Breakdown chart -->
+  <div class="card">
+    <div class="card-title">Outcome Breakdown</div>
+    <div class="chart-wrap">
+      <canvas id="chart-outcome"></canvas>
+    </div>
+  </div>
+
+  <!-- Avg Wait Time chart -->
+  <div class="card">
+    <div class="card-title">Average Wait Time (min)</div>
+    <div class="chart-wrap">
+      <canvas id="chart-wait"></canvas>
+    </div>
+  </div>
+
+  <!-- Peak Hours chart -->
+  <div class="card">
+    <div class="card-title">Peak Hours — Queues by Hour of Day</div>
+    <div class="chart-wrap">
+      <canvas id="chart-peak"></canvas>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <a href="https://github.com/mrkaqz/queue" target="_blank">github.com/mrkaqz/queue</a>
+  &nbsp;·&nbsp; v1.0.8 &nbsp;·&nbsp; MIT License
+</footer>
+
+<div id="toast"></div>
+
+<script>
+  // ── Auth helpers (same as admin/index.html) ───────────────────────────────
+  const TOKEN_KEY  = 'admin_token';
+  const getToken   = () => sessionStorage.getItem(TOKEN_KEY);
+  const saveToken  = t  => sessionStorage.setItem(TOKEN_KEY, t);
+  const clearToken = () => sessionStorage.removeItem(TOKEN_KEY);
+
+  function authHeaders() {
+    return { 'Authorization': 'Bearer ' + (getToken() || ''), 'Content-Type': 'application/json' };
+  }
+
+  async function checkAuth() {
+    try {
+      const res = await fetch('/api/auth/status');
+      const { pin_set } = await res.json();
+      if (!pin_set)        revealPage(false);
+      else if (getToken()) revealPage(true);
+      else                 showUnlockModal();
+    } catch(e) { revealPage(false); }
+  }
+
+  function showUnlockModal() {
+    document.getElementById('pin-overlay').style.display = 'flex';
+    setTimeout(() => document.querySelector('#unlock-pin .pin-input').focus(), 50);
+  }
+
+  function revealPage(pinSet) {
+    document.getElementById('pin-overlay').style.display = 'none';
+    loadNavShopName();
+    loadInitialData();
+  }
+
+  async function submitUnlockPin() {
+    const pin = getPinValue('unlock-pin');
+    document.getElementById('unlock-error').textContent = '';
+    if (pin.length !== 4) return;
+    try {
+      const res  = await fetch('/api/auth/verify-pin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        saveToken(data.token);
+        revealPage(true);
+      } else {
+        document.getElementById('unlock-error').textContent = 'Incorrect PIN';
+        shakePins('unlock-pin');
+        clearPinInputs('unlock-pin');
+      }
+    } catch(e) { document.getElementById('unlock-error').textContent = 'Network error'; }
+  }
+
+  // ── PIN input helpers ─────────────────────────────────────────────────────
+  function getPinValue(groupId) {
+    return [...document.querySelectorAll(`#${groupId} .pin-input`)].map(i => i.value).join('');
+  }
+  function clearPinInputs(groupId) {
+    const inputs = [...document.querySelectorAll(`#${groupId} .pin-input`)];
+    inputs.forEach(i => i.value = '');
+    if (inputs[0]) inputs[0].focus();
+  }
+  function shakePins(groupId) {
+    const el = document.getElementById(groupId);
+    if (!el) return;
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+    el.addEventListener('animationend', () => el.classList.remove('shake'), { once: true });
+  }
+  function initPinInputs() {
+    document.querySelectorAll('.pin-input').forEach(input => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(-1);
+        const siblings = [...input.closest('.pin-inputs').querySelectorAll('.pin-input')];
+        const idx = siblings.indexOf(input);
+        if (input.value && idx < siblings.length - 1) siblings[idx + 1].focus();
+      });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !input.value) {
+          const siblings = [...input.closest('.pin-inputs').querySelectorAll('.pin-input')];
+          const idx = siblings.indexOf(input);
+          if (idx > 0) { siblings[idx - 1].value = ''; siblings[idx - 1].focus(); }
+        }
+        if (e.key === 'Enter') {
+          const btn = input.closest('.pin-card').querySelector('.pin-btn');
+          if (btn) btn.click();
+        }
+      });
+      input.addEventListener('paste', e => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        const siblings = [...input.closest('.pin-inputs').querySelectorAll('.pin-input')];
+        const start = siblings.indexOf(input);
+        [...text].slice(0, siblings.length - start).forEach((ch, i) => { siblings[start + i].value = ch; });
+        siblings[Math.min(start + text.length, siblings.length - 1)].focus();
+      });
+    });
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  const toast = document.getElementById('toast');
+  let toastTimer;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  // ── Nav shop name ─────────────────────────────────────────────────────────
+  async function loadNavShopName() {
+    try {
+      const res = await fetch('/api/settings', { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      document.getElementById('nav-shop-name').textContent = (data.shop_name || 'Queue') + ' · Stats';
+    } catch(e) { /* ignore */ }
+  }
+
+  // ── Period tabs ───────────────────────────────────────────────────────────
+  let currentPeriod = 'day';
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentPeriod = btn.dataset.period;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateDateInputVisibility();
+    });
+  });
+
+  function updateDateInputVisibility() {
+    document.getElementById('inp-day-group').style.display   = currentPeriod === 'day'   ? '' : 'none';
+    document.getElementById('inp-month-group').style.display = currentPeriod === 'month' ? '' : 'none';
+    document.getElementById('inp-year-group').style.display  = currentPeriod === 'year'  ? '' : 'none';
+  }
+
+  function loadInitialData() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm   = now.getMonth() + 1;
+    const dd   = now.toISOString().slice(0, 10);
+
+    document.getElementById('inp-date').value   = dd;
+    document.getElementById('inp-year-m').value = yyyy;
+    document.getElementById('inp-month').value  = mm;
+    document.getElementById('inp-year-y').value = yyyy;
+
+    fetchStats();
+  }
+
+  // ── API URL builder ───────────────────────────────────────────────────────
+  function buildApiUrl() {
+    if (currentPeriod === 'day') {
+      const d = document.getElementById('inp-date').value || new Date().toISOString().slice(0,10);
+      return `/api/stats/daily?date=${encodeURIComponent(d)}`;
+    }
+    if (currentPeriod === 'month') {
+      const y = document.getElementById('inp-year-m').value;
+      const m = document.getElementById('inp-month').value;
+      return `/api/stats/monthly?year=${y}&month=${m}`;
+    }
+    const y = document.getElementById('inp-year-y').value;
+    return `/api/stats/yearly?year=${y}`;
+  }
+
+  // ── Fetch & render ────────────────────────────────────────────────────────
+  async function fetchStats() {
+    document.getElementById('btn-load').disabled = true;
+    try {
+      const url = buildApiUrl();
+      const res = await fetch(url, { headers: authHeaders() });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
+      if (!res.ok) { showToast('Failed to load stats'); return; }
+      const data = await res.json();
+      renderKpi(data.kpi);
+      renderCharts(data);
+    } catch(e) {
+      showToast('Error: ' + e.message);
+    } finally {
+      document.getElementById('btn-load').disabled = false;
+    }
+  }
+
+  // ── KPI rendering ─────────────────────────────────────────────────────────
+  function renderKpi(kpi) {
+    document.getElementById('kpi-total').textContent   = kpi.total_issued ?? '—';
+    document.getElementById('kpi-served').textContent  = kpi.total_served ?? '—';
+    document.getElementById('kpi-skipped').textContent = kpi.total_skipped_held ?? '—';
+    document.getElementById('kpi-wait').textContent    =
+      kpi.avg_wait_minutes != null ? kpi.avg_wait_minutes.toFixed(1) : '—';
+
+    const hour = kpi.busiest_hour;
+    document.getElementById('kpi-busiest').textContent = hour != null ? `${hour}:00` : '—';
+    document.getElementById('kpi-busiest-sub').textContent =
+      kpi.busiest_hour_count ? `${kpi.busiest_hour_count} queues` : '';
+  }
+
+  // ── Chart instances ───────────────────────────────────────────────────────
+  const charts = { volume: null, outcome: null, wait: null, peak: null };
+
+  function destroyAll() {
+    Object.keys(charts).forEach(k => { if (charts[k]) { charts[k].destroy(); charts[k] = null; } });
+  }
+
+  // X-axis labels: format depending on current period
+  function fmtLabel(lbl) {
+    if (currentPeriod === 'day')   return `${lbl}:00`;
+    if (currentPeriod === 'month') return `${parseInt(lbl, 10)}`;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[parseInt(lbl, 10) - 1] || lbl;
+  }
+
+  function renderCharts(data) {
+    destroyAll();
+
+    const xLabels      = data.labels.map(fmtLabel);
+    const peakLabels   = data.peak_hours.labels.map(l => `${l}:00`);
+    const peakTotals   = data.peak_hours.total;
+    const peakMax      = Math.max(...peakTotals);
+    const peakColors   = peakTotals.map(v => v === peakMax && peakMax > 0 ? '#f59e0b' : '#93c5fd');
+
+    const commonOpts = {
+      responsive: true,
+      animation: { duration: 400 },
+      plugins: {
+        legend: { position: 'top', labels: { font: { family: 'Inter', size: 12 }, padding: 12 } },
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Inter', size: 11 } } },
+        y: { beginAtZero: true, ticks: { font: { family: 'Inter', size: 11 }, stepSize: 1 } },
+      },
+    };
+
+    // Volume
+    charts.volume = new Chart(document.getElementById('chart-volume'), {
+      type: 'bar',
+      data: {
+        labels: xLabels,
+        datasets: [{
+          label: 'Total Queues',
+          data: data.total,
+          backgroundColor: '#0ea5e9',
+          borderRadius: 4,
+        }],
+      },
+      options: { ...commonOpts, plugins: { ...commonOpts.plugins, legend: { display: false } } },
+    });
+
+    // Outcome breakdown (stacked)
+    charts.outcome = new Chart(document.getElementById('chart-outcome'), {
+      type: 'bar',
+      data: {
+        labels: xLabels,
+        datasets: [
+          { label: 'Served',  data: data.served,  backgroundColor: '#16a34a', borderRadius: 2 },
+          { label: 'Skipped', data: data.skipped, backgroundColor: '#dc2626', borderRadius: 2 },
+          { label: 'Held',    data: data.held,    backgroundColor: '#7c3aed', borderRadius: 2 },
+        ],
+      },
+      options: {
+        ...commonOpts,
+        scales: {
+          x: { ...commonOpts.scales.x, stacked: true },
+          y: { ...commonOpts.scales.y, stacked: true },
+        },
+      },
+    });
+
+    // Avg wait time
+    charts.wait = new Chart(document.getElementById('chart-wait'), {
+      type: 'line',
+      data: {
+        labels: xLabels,
+        datasets: [{
+          label: 'Avg Wait (min)',
+          data: data.avg_wait_minutes,
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245,158,11,0.1)',
+          fill: true,
+          tension: 0.3,
+          spanGaps: false,
+          pointRadius: 3,
+          pointBackgroundColor: '#f59e0b',
+        }],
+      },
+      options: { ...commonOpts, plugins: { ...commonOpts.plugins, legend: { display: false } } },
+    });
+
+    // Peak hours — always hour 00–23
+    charts.peak = new Chart(document.getElementById('chart-peak'), {
+      type: 'bar',
+      data: {
+        labels: peakLabels,
+        datasets: [{
+          label: 'Queues',
+          data: peakTotals,
+          backgroundColor: peakColors,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        ...commonOpts,
+        plugins: {
+          ...commonOpts.plugins,
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.raw} queue${ctx.raw !== 1 ? 's' : ''}`,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  initPinInputs();
+  checkAuth();
+</script>
+</body>
+</html>

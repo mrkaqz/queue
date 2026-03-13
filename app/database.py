@@ -272,3 +272,128 @@ async def reset_queue():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM queue")
         await db.commit()
+
+
+# ── Statistics helpers ────────────────────────────────────────────────────────
+
+def _make_stats_result(rows, labels_all: list, peak_rows) -> dict:
+    """Merge sparse DB rows into a zero-filled result dict."""
+    row_map = {r[0]: r for r in rows}
+    peak_map = {r[0]: r[1] for r in peak_rows}
+
+    labels, total, served, skipped, held, avg_wait = [], [], [], [], [], []
+    for lbl in labels_all:
+        r = row_map.get(lbl)
+        labels.append(lbl)
+        total.append(int(r[1]) if r else 0)
+        served.append(int(r[2]) if r else 0)
+        skipped.append(int(r[3]) if r else 0)
+        held.append(int(r[4]) if r else 0)
+        avg_wait.append(round(float(r[5]), 1) if r and r[5] is not None else None)
+
+    # Peak hours (hour-of-day distribution, always 24 buckets)
+    hours_all = [f"{h:02d}" for h in range(24)]
+    peak_total = [int(peak_map.get(h, 0)) for h in hours_all]
+    busiest_idx = peak_total.index(max(peak_total)) if any(peak_total) else 0
+    busiest_hour = hours_all[busiest_idx]
+    busiest_count = peak_total[busiest_idx]
+
+    # KPI aggregates
+    t = sum(total)
+    s = sum(served)
+    sk = sum(skipped) + sum(held)
+    wait_vals = [v for v in avg_wait if v is not None]
+    avg_w = round(sum(wait_vals) / len(wait_vals), 1) if wait_vals else None
+
+    return {
+        "labels": labels,
+        "total": total,
+        "served": served,
+        "skipped": skipped,
+        "held": held,
+        "avg_wait_minutes": avg_wait,
+        "peak_hours": {"labels": hours_all, "total": peak_total},
+        "kpi": {
+            "total_issued": t,
+            "total_served": s,
+            "total_skipped_held": sk,
+            "avg_wait_minutes": avg_w,
+            "busiest_hour": busiest_hour,
+            "busiest_hour_count": busiest_count,
+        },
+    }
+
+
+_CHART_SQL = """
+    SELECT {lbl_expr} AS lbl,
+           COUNT(*) AS total,
+           SUM(CASE WHEN status='served'  THEN 1 ELSE 0 END) AS served,
+           SUM(CASE WHEN status='skipped' THEN 1 ELSE 0 END) AS skipped,
+           SUM(CASE WHEN status='held'    THEN 1 ELSE 0 END) AS held,
+           AVG(CASE WHEN status='served' AND called_at IS NOT NULL
+                   THEN (julianday(called_at) - julianday(created_at)) * 24 * 60
+                   ELSE NULL END) AS avg_wait
+    FROM queue
+    WHERE {where}
+    GROUP BY lbl ORDER BY lbl
+"""
+
+_PEAK_SQL = """
+    SELECT strftime('%H', created_at) AS hour, COUNT(*) AS total
+    FROM queue WHERE {where}
+    GROUP BY hour ORDER BY hour
+"""
+
+
+async def get_stats_daily(date_str: str) -> dict:
+    """Hourly breakdown for a single calendar date (YYYY-MM-DD)."""
+    import calendar as _cal
+    where = "strftime('%Y-%m-%d', created_at) = ?"
+    params = (date_str,)
+    labels_all = [f"{h:02d}" for h in range(24)]
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            _CHART_SQL.format(lbl_expr="strftime('%H', created_at)", where=where), params
+        ) as cur:
+            rows = await cur.fetchall()
+        async with db.execute(_PEAK_SQL.format(where=where), params) as cur:
+            peak_rows = await cur.fetchall()
+
+    return _make_stats_result(rows, labels_all, peak_rows)
+
+
+async def get_stats_monthly(year: int, month: int) -> dict:
+    """Daily breakdown for a given year+month."""
+    import calendar as _cal
+    where = "strftime('%Y', created_at) = ? AND strftime('%m', created_at) = ?"
+    params = (str(year).zfill(4), str(month).zfill(2))
+    days_in_month = _cal.monthrange(year, month)[1]
+    labels_all = [f"{d:02d}" for d in range(1, days_in_month + 1)]
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            _CHART_SQL.format(lbl_expr="strftime('%d', created_at)", where=where), params
+        ) as cur:
+            rows = await cur.fetchall()
+        async with db.execute(_PEAK_SQL.format(where=where), params) as cur:
+            peak_rows = await cur.fetchall()
+
+    return _make_stats_result(rows, labels_all, peak_rows)
+
+
+async def get_stats_yearly(year: int) -> dict:
+    """Monthly breakdown for a given year."""
+    where = "strftime('%Y', created_at) = ?"
+    params = (str(year).zfill(4),)
+    labels_all = [f"{m:02d}" for m in range(1, 13)]
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            _CHART_SQL.format(lbl_expr="strftime('%m', created_at)", where=where), params
+        ) as cur:
+            rows = await cur.fetchall()
+        async with db.execute(_PEAK_SQL.format(where=where), params) as cur:
+            peak_rows = await cur.fetchall()
+
+    return _make_stats_result(rows, labels_all, peak_rows)

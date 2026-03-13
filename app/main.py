@@ -13,6 +13,7 @@ from app.routers import queue as queue_router
 from app.routers import settings as settings_router
 from app.routers import push as push_router
 from app.routers import auth as auth_router
+from app.routers import stats as stats_router
 
 STATIC_DIR = Path(__file__).parent / "static"
 AUDIO_DIR = db.DATA_DIR / "audio"
@@ -110,6 +111,7 @@ app.include_router(auth_router.router)
 app.include_router(queue_router.router)
 app.include_router(settings_router.router)
 app.include_router(push_router.router)
+app.include_router(stats_router.router)
 
 
 # ── Page routes ───────────────────────────────────────────────────────────────
@@ -137,6 +139,11 @@ async def settings_page():
 @app.get("/status")
 async def status_page():
     return FileResponse(STATIC_DIR / "status" / "index.html")
+
+
+@app.get("/stats")
+async def stats_page():
+    return FileResponse(STATIC_DIR / "stats" / "index.html")
 
 
 # ── WebSocket ─────────────────────────────────────────────────────────────────
