@@ -30,6 +30,26 @@ A lightweight, self-hosted queue management system designed for small businesses
 
 ---
 
+## Screenshots
+
+**TV Display** — full-screen queue board for a wall-mounted screen or smart TV
+
+![TV Display](docs/screenshots/tv.png)
+
+**Admin** — operator control panel with queue list and action buttons
+
+![Admin](docs/screenshots/admin.png)
+
+**Settings** — configure shop name, logo, voice, announcements, and security
+
+![Settings](docs/screenshots/settings.png)
+
+**Phone Status** — customer-facing page opened by scanning the QR code on the TV
+
+![Phone Status](docs/screenshots/status.png)
+
+---
+
 ## Compatible Platforms
 
 | OS / Device | Docker | Python (no Docker) |
