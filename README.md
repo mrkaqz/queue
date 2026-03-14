@@ -11,6 +11,7 @@ A lightweight, self-hosted queue management system designed for small businesses
 - **Settings Page** — Configure shop name, announcements, voice language, and more
 - **Phone Status Page** — Customers scan a QR code to follow their queue on their phone
 - **PWA Web Push Notifications** — Notify customers on their phone when their number is called (works in background)
+- **Facebook Messenger Bot** — Customers subscribe by messaging the shop's Facebook Page; notified via Messenger when their number is called
 - **Thai/English Voice Announcements** — Natural TTS via `edge-tts` (Microsoft Neural voices, no API key needed)
 - **Real-time Updates** — WebSocket-powered live sync across all connected devices
 - **PIN Security** — 4-digit PIN locks `/admin` and `/settings` with backend-enforced session tokens (LAN & cloud-safe)
@@ -72,7 +73,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:2.1.0        # specific version
+ghcr.io/mrkaqz/queue:2.2.0        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)

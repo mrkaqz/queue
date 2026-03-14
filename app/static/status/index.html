@@ -240,6 +240,16 @@
     <button id="push-btn" onclick="togglePush()">🔔 Notify me when called</button>
     <div id="push-msg">Subscribe to get a notification when your number is called</div>
   </div>
+
+  <div id="messenger-section" style="display:none; width:100%; flex-direction:column; align-items:center; gap:8px; margin-top:4px;">
+    <a id="messenger-link" href="#" target="_blank" rel="noopener"
+       style="display:block; width:100%; box-sizing:border-box; padding:11px 16px; background:#1877f2; color:#fff; border-radius:10px; text-align:center; font-size:0.92rem; font-weight:600; text-decoration:none;">
+      💬 แจ้งเตือนผ่าน Messenger · Notify via Messenger
+    </a>
+    <div id="messenger-msg" style="font-size:0.75rem; color:#64748b; text-align:center;">
+      เปิด Messenger แล้วกด Send เพื่อสมัครรับแจ้งเตือน · Open Messenger and tap Send to subscribe
+    </div>
+  </div>
 </div>
 
 <div id="called-banner">🔔 Your number is being called!</div>
@@ -263,6 +273,16 @@
   let pushSubscription = null;
   let padding = 3;
   let currentServingNumber = null;
+  let fbPageUsername = null;
+
+  const messengerSection = document.getElementById('messenger-section');
+  const messengerLink    = document.getElementById('messenger-link');
+
+  function updateMessengerLink() {
+    if (!fbPageUsername) return;
+    const base = `https://m.me/${fbPageUsername}`;
+    messengerLink.href = myNumberDisplay ? `${base}?text=${myNumberDisplay}` : base;
+  }
 
   // ── Service Worker registration ───────────────────────────────────────────
   if ('serviceWorker' in navigator) {
@@ -277,6 +297,7 @@
     myNumberDisplay = String(val).padStart(padding, '0');
     myNumberEl.textContent = myNumberDisplay;
     statusCard.classList.add('visible');
+    updateMessengerLink();
     refreshStatus();
     // Save to localStorage for re-hydration
     localStorage.setItem('myQueueNumber', val);
@@ -305,6 +326,13 @@
       const shopName = settings.shop_name || 'Queue Status';
       shopNameEl.textContent = shopName;
       document.getElementById('status-nav-name').textContent = shopName;
+
+      // Show Messenger subscribe button if Facebook page username is configured
+      fbPageUsername = (settings.facebook_page_username || '').trim();
+      if (fbPageUsername) {
+        messengerSection.style.display = 'flex';
+        updateMessengerLink();
+      }
 
       currentServingNumber = status.current_number;
       liveCurrentEl.textContent = status.current || '—';

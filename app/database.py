@@ -25,6 +25,10 @@ SETTING_DEFAULTS = {
     "vapid_email": "",
     "vapid_public_key": "",
     "vapid_private_key": "",
+    "facebook_page_access_token": "",
+    "facebook_app_secret":        "",
+    "facebook_webhook_verify_token": "",
+    "facebook_page_username":     "",
 }
 
 
@@ -50,6 +54,14 @@ async def init_db():
             CREATE TABLE IF NOT EXISTS settings (
                 key   TEXT PRIMARY KEY,
                 value TEXT NOT NULL
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS messenger_subscriptions (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                psid          TEXT NOT NULL UNIQUE,
+                queue_number  INTEGER,
+                subscribed_at TEXT NOT NULL DEFAULT (datetime('now'))
             )
         """)
         await db.execute("""
@@ -422,6 +434,38 @@ async def get_stats_monthly(year: int, month: int, tz_offset: float = 0.0) -> di
             peak_rows = await cur.fetchall()
 
     return _make_stats_result(rows, labels_all, peak_rows)
+
+
+# ── Messenger helpers ─────────────────────────────────────────────────────────
+
+async def save_messenger_sub(psid: str, queue_number: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO messenger_subscriptions (psid, queue_number)
+               VALUES (?, ?)
+               ON CONFLICT(psid) DO UPDATE SET queue_number = excluded.queue_number,
+                                               subscribed_at = datetime('now')""",
+            (psid, queue_number),
+        )
+        await db.commit()
+
+
+async def delete_messenger_sub(psid: str) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "DELETE FROM messenger_subscriptions WHERE psid = ?", (psid,)
+        )
+        await db.commit()
+
+
+async def get_messenger_subs(queue_number: int) -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT psid FROM messenger_subscriptions WHERE queue_number = ?",
+            (queue_number,),
+        ) as cur:
+            rows = await cur.fetchall()
+    return [r[0] for r in rows]
 
 
 async def get_stats_yearly(year: int, tz_offset: float = 0.0) -> dict:

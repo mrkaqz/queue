@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends
 from app import database as db
 from app import tts
@@ -54,6 +56,13 @@ async def call_next():
         "waiting": status["waiting"],
         "audio_urls": audio_urls,
     })
+
+    # Fire Messenger notifications as a background task (non-blocking)
+    from app.routers.messenger import notify_messenger_subscribers
+    asyncio.create_task(
+        notify_messenger_subscribers(called["number"], called["number_display"])
+    )
+
     return {**called, "audio_urls": audio_urls}
 
 

@@ -31,7 +31,9 @@ _ALLOWED_LOGO_TYPES = {
 @router.get("", dependencies=[Depends(require_auth)])
 async def get_settings():
     raw = await db.get_all_settings()
-    safe = {k: v for k, v in raw.items() if k not in ("vapid_private_key", "admin_pin")}
+    safe = {k: v for k, v in raw.items()
+            if k not in ("vapid_private_key", "admin_pin",
+                         "facebook_page_access_token", "facebook_app_secret")}
     return safe
 
 

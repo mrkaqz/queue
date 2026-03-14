@@ -461,6 +461,50 @@
     </div>
   </div>
 
+  <!-- Facebook Messenger Bot -->
+  <div class="card">
+    <div class="card-title">Facebook Messenger Bot</div>
+    <div class="field">
+      <label for="facebook_page_access_token">Page Access Token</label>
+      <input type="password" id="facebook_page_access_token" placeholder="EAAxxxxx..." autocomplete="new-password" />
+      <span class="hint">From Facebook App Dashboard → Messenger → Generate Token.</span>
+    </div>
+    <div class="field">
+      <label for="facebook_app_secret">App Secret</label>
+      <input type="password" id="facebook_app_secret" placeholder="App secret for webhook signature verification" autocomplete="new-password" />
+      <span class="hint">From Facebook App Dashboard → Settings → Basic → App Secret.</span>
+    </div>
+    <div class="field">
+      <label for="facebook_webhook_verify_token">Webhook Verify Token</label>
+      <input type="text" id="facebook_webhook_verify_token" placeholder="Any random string you choose" />
+      <span class="hint">A random string you create. Enter the same value when setting up the webhook in Facebook.</span>
+    </div>
+    <div class="field">
+      <label for="facebook_page_username">Page Username</label>
+      <input type="text" id="facebook_page_username" placeholder="e.g. myshoppage" />
+      <span class="hint">Your Facebook Page username (from facebook.com/<strong>username</strong>). Used to build the m.me subscribe link on the status page.</span>
+    </div>
+    <div class="field">
+      <label>Webhook URL</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input type="text" id="messenger_webhook_url" readonly style="flex:1; background:#f8fafc; color:#64748b;" />
+        <button type="button" onclick="copyWebhookUrl()" style="padding:8px 14px; background:#e2e8f0; border:none; border-radius:6px; cursor:pointer; font-size:0.85rem; white-space:nowrap;">Copy</button>
+      </div>
+      <span class="hint">Enter this URL in Facebook App Dashboard → Messenger → Webhooks → Edit Callback URL. Subscribe to the <strong>messages</strong> event.</span>
+    </div>
+    <div class="field" style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px 14px;">
+      <div style="font-size:0.82rem; color:#0369a1; line-height:1.7;">
+        <strong>Setup guide:</strong><br>
+        1. Go to <a href="https://developers.facebook.com" target="_blank" style="color:#0284c7;">developers.facebook.com</a> → Create App → Business<br>
+        2. Add <strong>Messenger</strong> product → select your Facebook Page → generate Page Access Token<br>
+        3. Fill in the fields above and click <strong>Save Settings</strong><br>
+        4. In Messenger settings → Webhooks → Add Callback URL (paste from above) + your Verify Token → Verify<br>
+        5. Subscribe the webhook to the <strong>messages</strong> event<br>
+        6. Your Facebook Page must be publicly accessible. Customers scan the QR code → open Status page → tap <em>Notify via Messenger</em>
+      </div>
+    </div>
+  </div>
+
   <!-- Save -->
   <div class="card" style="display:flex; align-items:center;">
     <button class="btn-save" id="save-btn" onclick="saveSettings()">Save Settings</button>
@@ -701,6 +745,8 @@
     'shop_name', 'base_url', 'timezone', 'queue_padding', 'daily_reset_time',
     'announcement_message', 'announcement_language', 'announcement_sound',
     'admin_sound', 'thai_voice', 'english_voice', 'vapid_email', 'vapid_public_key',
+    'facebook_page_access_token', 'facebook_app_secret',
+    'facebook_webhook_verify_token', 'facebook_page_username',
   ];
 
   const toast      = document.getElementById('toast');
@@ -719,7 +765,8 @@
   async function saveSettings() {
     saveBtn.disabled = true;
     const payload = {};
-    FIELDS.filter(f => f !== 'vapid_public_key').forEach(f => {
+    const READ_ONLY = new Set(['vapid_public_key']);
+    FIELDS.filter(f => !READ_ONLY.has(f)).forEach(f => {
       const el = document.getElementById(f);
       if (el) payload[f] = el.value;
     });
@@ -744,6 +791,26 @@
     }
   }
 
+  function buildWebhookUrl(baseUrl) {
+    try {
+      const u = new URL(baseUrl.trim() || location.origin);
+      // Prefer HTTPS on port 8443 if the base is HTTP on 8080
+      if (u.protocol === 'http:' && u.port === '8080') {
+        u.protocol = 'https:';
+        u.port = '8443';
+      }
+      u.pathname = '/api/messenger/webhook';
+      return u.toString();
+    } catch {
+      return `${location.origin}/api/messenger/webhook`;
+    }
+  }
+
+  function copyWebhookUrl() {
+    const el = document.getElementById('messenger_webhook_url');
+    navigator.clipboard.writeText(el.value).then(() => showToast('Webhook URL copied!', '#166534'));
+  }
+
   async function loadSettings() {
     try {
       const res = await fetch('/api/settings', { headers: authHeaders() });
@@ -753,6 +820,9 @@
         const el = document.getElementById(f);
         if (el && data[f] !== undefined) el.value = data[f];
       });
+      // Build webhook URL from web_app_url (base_url) setting
+      const webhookEl = document.getElementById('messenger_webhook_url');
+      if (webhookEl) webhookEl.value = buildWebhookUrl(data.base_url || '');
       if (data.shop_logo) {
         document.getElementById('logo-preview').src = data.shop_logo;
         document.getElementById('logo-preview-wrap').style.display = 'block';
