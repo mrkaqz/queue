@@ -191,7 +191,45 @@ Open `http://<server-ip>:8080/admin` on any device. Use the controls to:
 | **Reset** | Clear all queues (start of day) |
 
 ### Customer Phone
-A QR code is shown on the TV page. Customers scan it to open `/status` on their phone and subscribe to push notifications — they'll be alerted when their number is called, even with the screen off.
+A QR code is shown on the TV page. Customers scan it to open `/status` on their phone. From there they can:
+- Subscribe to **PWA push notifications** — alerted when their number is called, even with the screen off
+- Tap **"Notify via Messenger"** — subscribe via Facebook Messenger with one tap (if configured)
+
+---
+
+## Facebook Messenger Bot
+
+Customers can subscribe to queue notifications through Facebook Messenger — no app install or browser permission needed. They simply tap the Messenger button on the `/status` page and send their queue number.
+
+### Customer flow
+```
+1. Scan QR code on TV → opens /status
+2. Enter queue number → tap "Notify via Messenger"
+3. Messenger opens with number pre-filled → tap Send (one tap)
+4. Bot confirms: "✅ Subscribed for queue 005 — you'll be notified when called."
+5. Operator calls that number → Messenger notification sent instantly
+6. Subscription auto-deleted after notify
+```
+
+### Operator setup
+1. Go to [developers.facebook.com](https://developers.facebook.com) → **Create App** → type **Business**
+2. From the left sidebar → **Add product** → choose **Messenger** → click **Set up**
+3. Under **Access Tokens** → select your Facebook Page → copy the **Page Access Token**
+4. Open **Settings → Facebook Messenger Bot** in the Queue app and fill in:
+   - **Page Access Token** — from step 3
+   - **App Secret** — from App Settings → Basic
+   - **Webhook Verify Token** — any random string you choose (e.g. `myshop_verify_2024`)
+   - **Page Username** — your Facebook Page username (e.g. `myshoppage` for `m.me/myshoppage`)
+5. Click **Save**, then copy the **Webhook URL** shown in the card
+6. Back in Facebook App → Messenger → **Webhooks** → **Add Callback URL**
+   - Callback URL: the Webhook URL from step 5
+   - Verify Token: the same string from step 4
+7. Click **Verify and Save** → subscribe to the **`messages`** event
+8. Under **Messenger API Settings** → **Generate Token** if needed, verify the Page is connected
+
+> **HTTPS required:** Facebook rejects self-signed certificates. Use the container's HTTPS port (`8443`) with a real domain and CA-signed cert, or tunnel with [ngrok](https://ngrok.com) for testing. Local LAN deployments without a domain cannot use this feature.
+
+> **Dev Mode vs Live Mode:** In Dev Mode, only Facebook App admins and testers can message the bot. Switch the app to **Live Mode** for all customers to use it.
 
 ---
 
@@ -248,6 +286,10 @@ All settings are managed through `/settings` in the UI. No config files needed.
 | Thai Voice | `th-TH-PremwadeeNeural` | edge-tts voice for Thai |
 | English Voice | `en-US-JennyNeural` | edge-tts voice for English |
 | VAPID Email | *(required for push)* | Email used for Web Push VAPID keys |
+| Facebook Page Access Token | *(empty)* | Page Access Token from Facebook Developer App |
+| Facebook App Secret | *(empty)* | App Secret from Facebook App Settings → Basic |
+| Facebook Webhook Verify Token | *(empty)* | Any string you choose; used to verify the webhook with Facebook |
+| Facebook Page Username | *(empty)* | Page username for `m.me/` links, e.g. `myshoppage` |
 
 > **Web App URL** — set this to your server's LAN IP so the QR code on the TV points to the right address when customers scan it from their phones.
 
@@ -272,7 +314,9 @@ queue/
     │   ├── auth.py              # PIN auth endpoints & session token logic
     │   ├── queue.py             # Queue API endpoints
     │   ├── settings.py          # Settings API endpoints
-    │   └── push.py              # Web Push subscription endpoints
+    │   ├── push.py              # Web Push subscription endpoints
+    │   ├── messenger.py         # Facebook Messenger webhook & bot logic
+    │   └── stats.py             # Statistics API endpoints
     └── static/
         ├── manifest.json        # PWA manifest
         ├── sw.js                # Service Worker (push notifications)
@@ -328,6 +372,21 @@ queue/
 | `POST` | `/api/push/subscribe` | Public | Register device for push |
 | `POST` | `/api/push/unsubscribe` | Public | Remove device subscription |
 
+### Messenger Bot
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/messenger/webhook` | Public | Facebook webhook verification challenge |
+| `POST` | `/api/messenger/webhook` | Public (HMAC-signed) | Receive Messenger events from Facebook |
+
+### Statistics
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/stats/daily` | 🔒 | Hourly breakdown for a date (default: today) |
+| `GET` | `/api/stats/monthly` | 🔒 | Daily breakdown for a year/month (default: current) |
+| `GET` | `/api/stats/yearly` | 🔒 | Monthly breakdown for a year (default: current) |
+
 ### WebSocket
 
 Connect to `ws://<server>:8080/ws` for real-time events.
@@ -364,6 +423,7 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 | Real-time | WebSockets |
 | TTS | [edge-tts](https://github.com/rany2/edge-tts) |
 | Push | Web Push API + `pywebpush` |
+| Messenger | Facebook Messenger Platform (Graph API v20) |
 | Frontend | Vanilla HTML / CSS / JavaScript |
 | Container | Docker + Docker Compose |
 
