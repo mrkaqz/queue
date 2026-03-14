@@ -68,20 +68,14 @@ async def _handle_message(psid: str, text: str) -> None:
         await db.save_messenger_sub(psid, queue_num)
         await _send_message(
             token, psid,
-            f"✅ สมัครรับแจ้งเตือนสำหรับคิว {display} แล้ว\n"
-            f"Subscribed for queue {display}. You'll be notified when called.\n\n"
+            f"🎫 ติดตามคิวที่ {display} · Tracking queue {display}\n\n"
+            f"เราจะแจ้งเตือนคุณเมื่อถูกเรียก\n"
+            f"You'll be notified when your number is called.\n\n"
             f"พิมพ์ 'cancel' เพื่อยกเลิก · Type 'cancel' to unsubscribe.",
         )
         return
 
-    # Greeting / default
-    await _send_message(
-        token, psid,
-        "สวัสดี! · Hello!\n\n"
-        "ส่งหมายเลขคิวของคุณ (เช่น 005) เพื่อรับแจ้งเตือนเมื่อถูกเรียก\n"
-        "Send your queue number (e.g. 005) to get notified when called.\n\n"
-        "พิมพ์ 'cancel' เพื่อยกเลิก · Type 'cancel' to unsubscribe.",
-    )
+    # Any other message — ignore silently (don't interfere with normal business chat)
 
 
 # ── Public notify function (called from queue router) ─────────────────────────
