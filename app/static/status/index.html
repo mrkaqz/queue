@@ -209,8 +209,18 @@
 
 <div id="lookup-card">
   <label for="number-input">หมายเลขคิวของคุณ · Your Queue Number</label>
-  <input type="number" id="number-input" placeholder="005" min="1" max="999" />
+  <input type="number" id="number-input" placeholder="005" min="1" max="999" oninput="onNumberInput(this.value)" />
   <button id="lookup-btn" onclick="lookupNumber()">ติดตาม · Track</button>
+</div>
+
+<div id="messenger-section" style="display:none; width:100%; flex-direction:column; align-items:center; gap:8px; margin-top:8px;">
+  <a id="messenger-link" href="#" target="_blank" rel="noopener"
+     style="display:block; width:100%; box-sizing:border-box; padding:11px 16px; background:#1877f2; color:#fff; border-radius:10px; text-align:center; font-size:0.92rem; font-weight:600; text-decoration:none;">
+    💬 แจ้งเตือนผ่าน Messenger · Notify via Messenger
+  </a>
+  <div id="messenger-msg" style="font-size:0.75rem; color:#64748b; text-align:center;">
+    ส่งหมายเลขคิวของคุณใน Messenger เพื่อรับแจ้งเตือน · Send your queue number in Messenger to subscribe
+  </div>
 </div>
 
 <div id="status-card">
@@ -239,16 +249,6 @@
   <div id="push-section">
     <button id="push-btn" onclick="togglePush()">🔔 Notify me when called</button>
     <div id="push-msg">Subscribe to get a notification when your number is called</div>
-  </div>
-
-  <div id="messenger-section" style="display:none; width:100%; flex-direction:column; align-items:center; gap:8px; margin-top:4px;">
-    <a id="messenger-link" href="#" target="_blank" rel="noopener"
-       style="display:block; width:100%; box-sizing:border-box; padding:11px 16px; background:#1877f2; color:#fff; border-radius:10px; text-align:center; font-size:0.92rem; font-weight:600; text-decoration:none;">
-      💬 แจ้งเตือนผ่าน Messenger · Notify via Messenger
-    </a>
-    <div id="messenger-msg" style="font-size:0.75rem; color:#64748b; text-align:center;">
-      เปิด Messenger แล้วกด Send เพื่อสมัครรับแจ้งเตือน · Open Messenger and tap Send to subscribe
-    </div>
   </div>
 </div>
 
@@ -281,8 +281,43 @@
   function updateMessengerLink() {
     if (!fbPageUsername) return;
     const base = `https://m.me/${fbPageUsername}`;
-    messengerLink.href = myNumberDisplay ? `${base}?text=${myNumberDisplay}` : base;
+    if (myNumberDisplay) {
+      messengerLink.href = `${base}?text=${encodeURIComponent('ติดตามคิว ' + myNumberDisplay)}`;
+      document.getElementById('messenger-msg').textContent =
+        `กด Send ใน Messenger เพื่อติดตามคิว ${myNumberDisplay} · Tap Send in Messenger to track queue ${myNumberDisplay}`;
+    } else {
+      messengerLink.href = base;
+      document.getElementById('messenger-msg').textContent =
+        'ส่งหมายเลขคิวของคุณใน Messenger เพื่อรับแจ้งเตือน · Send your queue number in Messenger to subscribe';
+    }
   }
+
+  function onNumberInput(val) {
+    const n = parseInt(val, 10);
+    if (n >= 1) {
+      myNumberDisplay = String(n).padStart(padding, '0');
+    } else {
+      myNumberDisplay = null;
+    }
+    updateMessengerLink();
+  }
+
+  async function initSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      const s   = await res.json();
+      padding = parseInt(s.queue_padding || '3', 10);
+      shopNameEl.textContent = s.shop_name || 'Queue Status';
+      document.getElementById('status-nav-name').textContent = s.shop_name || 'Queue Status';
+      fbPageUsername = (s.facebook_page_username || '').trim();
+      if (fbPageUsername) {
+        messengerSection.style.display = 'flex';
+        updateMessengerLink();
+      }
+    } catch (e) { /* non-critical */ }
+  }
+
+  initSettings();
 
   // ── Service Worker registration ───────────────────────────────────────────
   if ('serviceWorker' in navigator) {

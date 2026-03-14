@@ -14,6 +14,7 @@ from app.routers.auth import require_auth
 router = APIRouter(prefix="/api/messenger", tags=["messenger"])
 
 _NUMBER_RE = re.compile(r"^\d{1,4}$")
+_TRACK_RE  = re.compile(r"^ติดตามคิว\s+(\d{1,4})$")
 _GRAPH_URL  = "https://graph.facebook.com/v20.0/me/messages"
 
 
@@ -60,10 +61,14 @@ async def _handle_message(psid: str, text: str) -> None:
         )
         return
 
-    # Queue number
-    if _NUMBER_RE.match(text.strip()):
-        queue_num = int(text.strip())
-        padding   = int(await db.get_setting("queue_padding", "3"))
+    # Queue number — accept bare digits "003" OR Thai phrase "ติดตามคิว 003"
+    raw = text.strip()
+    track_m = _TRACK_RE.match(raw)
+    if track_m:
+        raw = track_m.group(1)   # extract just the digits
+    if _NUMBER_RE.match(raw):
+        queue_num = int(raw)
+        padding   = int(await db.get_setting("queue_padding") or "3")
         display   = str(queue_num).zfill(padding)
         await db.save_messenger_sub(psid, queue_num)
         await _send_message(
