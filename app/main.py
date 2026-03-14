@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import database as db
 from app.websocket import manager
+from app.time_sync import time_sync
 from app.routers import queue as queue_router
 from app.routers import settings as settings_router
 from app.routers import push as push_router
@@ -36,6 +37,15 @@ def _generate_vapid_keys() -> tuple[str, str]:
     return public_key_b64, private_key_pem
 
 
+# ── NTP sync loop ────────────────────────────────────────────────────────────
+
+async def _ntp_sync_loop():
+    await time_sync.sync()        # first sync at startup
+    while True:
+        await asyncio.sleep(300)  # re-sync every 5 minutes
+        await time_sync.sync()
+
+
 # ── Daily reset scheduler ────────────────────────────────────────────────────
 
 async def _daily_reset_loop():
@@ -43,20 +53,20 @@ async def _daily_reset_loop():
     while True:
         await asyncio.sleep(30)
         try:
-            reset_time = await db.get_setting("daily_reset_time", "00:00")
-            from datetime import datetime, time
-            now = datetime.now()
+            from datetime import timedelta
+            reset_time  = await db.get_setting("daily_reset_time", "00:00")
+            tz_offset   = float(await db.get_setting("timezone", "0") or "0")
+            now_local   = time_sync.now_utc() + timedelta(hours=tz_offset)
             hour, minute = (int(x) for x in reset_time.split(":"))
-            target = time(hour, minute)
-            today = now.date()
+            today_local = now_local.date()
             if (
-                now.hour == target.hour
-                and now.minute == target.minute
-                and last_reset_date != today
+                now_local.hour   == hour
+                and now_local.minute == minute
+                and last_reset_date  != today_local
             ):
                 await db.reset_queue()
                 await manager.broadcast({"event": "queue_reset", "reason": "daily_reset"})
-                last_reset_date = today
+                last_reset_date = today_local
         except Exception as e:
             print(f"[Scheduler] Error: {e}")
 
@@ -90,6 +100,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"[VAPID] Could not generate keys: {e}")
 
+    asyncio.create_task(_ntp_sync_loop())
     task = asyncio.create_task(_daily_reset_loop())
     yield
     task.cancel()
@@ -112,6 +123,13 @@ app.include_router(queue_router.router)
 app.include_router(settings_router.router)
 app.include_router(push_router.router)
 app.include_router(stats_router.router)
+
+
+# ── Time endpoint ─────────────────────────────────────────────────────────────
+
+@app.get("/api/time")
+async def server_time():
+    return {"utc": time_sync.now_utc().strftime("%Y-%m-%dT%H:%M:%SZ")}
 
 
 # ── Page routes ───────────────────────────────────────────────────────────────
@@ -156,11 +174,13 @@ async def websocket_endpoint(ws: WebSocket):
         status = await db.get_queue_status()
         settings = await db.get_all_settings()
         await ws.send_text(json.dumps({
-            "event": "init",
-            "status": status,
-            "shop_name": settings.get("shop_name", "My Queue"),
+            "event":                "init",
+            "status":               status,
+            "shop_name":            settings.get("shop_name", "My Queue"),
             "announcement_message": settings.get("announcement_message", ""),
-            "shop_logo": settings.get("shop_logo", ""),
+            "shop_logo":            settings.get("shop_logo", ""),
+            "server_utc":           time_sync.now_utc().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "timezone":             settings.get("timezone", "0"),
         }))
         while True:
             await ws.receive_text()  # keep alive; clients don't send messages

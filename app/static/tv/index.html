@@ -345,10 +345,15 @@
     }
   }
 
-  // ── Clock ────────────────────────────────────────────────────────────────
+  // ── Clock (server-synced) ─────────────────────────────────────────────────
+  let serverDrift = 0;  // ms: server UTC - browser clock at last WS connect
+  let tvTzOffset  = 0;  // hours, from settings
+
   function updateClock() {
-    const now = new Date();
-    clockEl.textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    const correctedUtcMs = Date.now() + serverDrift;
+    const localMs        = correctedUtcMs + tvTzOffset * 3600 * 1000;
+    const d              = new Date(localMs);
+    clockEl.textContent  = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
   }
   setInterval(updateClock, 1000);
   updateClock();
@@ -469,6 +474,10 @@
         shopEl.textContent = msg.shop_name || 'My Queue';
         setTicker(msg.announcement_message);
         setLogo(msg.shop_logo || '');
+        if (msg.server_utc) {
+          serverDrift = Date.parse(msg.server_utc) - Date.now();
+        }
+        tvTzOffset = parseFloat(msg.timezone ?? '0') || 0;
         return;
       }
 
@@ -514,6 +523,7 @@
         setTicker(msg.announcement_message);
         setLogo(msg.shop_logo || '');
         if (msg.admin_sound !== undefined) soundOutput = msg.admin_sound;
+        if (msg.timezone !== undefined) tvTzOffset = parseFloat(msg.timezone) || 0;
         fetch('/api/settings').then(r => r.json()).then(s => buildQR(s.base_url || '')).catch(() => {});
         return;
       }

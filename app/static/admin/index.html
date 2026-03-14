@@ -382,7 +382,7 @@
 
 <footer>
   <a href="https://github.com/mrkaqz/queue" target="_blank">github.com/mrkaqz/queue</a>
-  &nbsp;·&nbsp; v2.0.0 &nbsp;·&nbsp; 2026-03-13 &nbsp;·&nbsp; MIT License
+  &nbsp;·&nbsp; v2.1.0 &nbsp;·&nbsp; 2026-03-14 &nbsp;·&nbsp; MIT License
 </footer>
 
 <div id="toast"></div>
@@ -634,7 +634,7 @@
 
   function fmtTime(ts) {
     if (!ts) return '—';
-    // Append 'Z' so JS treats the stored value as UTC (Docker containers run UTC)
+    // Timestamps are stored as UTC; append 'Z' so JS Date parses them correctly
     const d = new Date(ts.replace(' ', 'T') + 'Z');
     if (isNaN(d)) return ts;
     // Shift by the configured UTC offset (in hours), then display as UTC so the shift sticks

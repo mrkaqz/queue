@@ -1,6 +1,7 @@
 import os
 import aiosqlite
 from pathlib import Path
+from app.time_sync import time_sync
 
 DATA_DIR = Path(os.environ.get("QUEUE_DATA_DIR", Path(__file__).parent.parent / "data"))
 DB_PATH = DATA_DIR / "queue.db"
@@ -19,6 +20,8 @@ SETTING_DEFAULTS = {
     "admin_sound": "tv",
     "admin_pin": "",          # SHA-256 hash of the admin PIN; empty = not configured
     "timezone": "0",          # UTC offset as number e.g. "0"=UTC, "7"=Bangkok (UTC+7), "-5"=New York (EST)
+    "queue_counter": "0",     # current queue number counter; reset to 0 on each queue reset
+    "queue_session": "1",     # increments on every reset; used to scope the queue list to the current session
     "vapid_email": "",
     "vapid_public_key": "",
     "vapid_private_key": "",
@@ -33,10 +36,16 @@ async def init_db():
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 number      INTEGER NOT NULL,
                 status      TEXT NOT NULL DEFAULT 'waiting',
-                created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-                called_at   TEXT
+                created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+                called_at   TEXT,
+                session     INTEGER NOT NULL DEFAULT 1
             )
         """)
+        # Add session column to existing installations that predate this field
+        async with db.execute("PRAGMA table_info(queue)") as cur:
+            cols = [r[1] for r in await cur.fetchall()]
+        if "session" not in cols:
+            await db.execute("ALTER TABLE queue ADD COLUMN session INTEGER NOT NULL DEFAULT 1")
         await db.execute("""
             CREATE TABLE IF NOT EXISTS settings (
                 key   TEXT PRIMARY KEY,
@@ -50,7 +59,7 @@ async def init_db():
                 endpoint     TEXT NOT NULL UNIQUE,
                 p256dh       TEXT NOT NULL,
                 auth         TEXT NOT NULL,
-                created_at   TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+                created_at   TEXT NOT NULL DEFAULT (datetime('now'))
             )
         """)
         for key, value in SETTING_DEFAULTS.items():
@@ -136,10 +145,11 @@ async def get_queue_status() -> dict:
 
 async def get_queue_list() -> list:
     padding = int(await get_setting("queue_padding", "3"))
+    session = int(await get_setting("queue_session", "1") or "1")
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT * FROM queue ORDER BY number ASC"
+            "SELECT * FROM queue WHERE session = ? ORDER BY number ASC", (session,)
         ) as cur:
             rows = await cur.fetchall()
     return [
@@ -159,13 +169,18 @@ async def add_queue_entry() -> dict:
     padding = int(await get_setting("queue_padding", "3"))
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
-            "SELECT COALESCE(MAX(number), 0) as mx FROM queue"
+            "SELECT key, value FROM settings WHERE key IN ('queue_counter', 'queue_session')"
         ) as cur:
-            row = await cur.fetchone()
-            next_num = (row[0] if row else 0) + 1
+            s = {r[0]: r[1] for r in await cur.fetchall()}
+        next_num = int(s.get("queue_counter", "0")) + 1
+        session  = int(s.get("queue_session",  "1"))
         await db.execute(
-            "INSERT INTO queue (number, status) VALUES (?, 'waiting')",
-            (next_num,),
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('queue_counter', ?)",
+            (str(next_num),),
+        )
+        await db.execute(
+            "INSERT INTO queue (number, status, created_at, session) VALUES (?, 'waiting', ?, ?)",
+            (next_num, time_sync.utc_iso(), session),
         )
         await db.commit()
     return {"number": next_num, "number_display": _fmt(next_num, padding)}
@@ -189,8 +204,8 @@ async def call_next() -> dict | None:
             return None
         # Set to serving
         await db.execute(
-            "UPDATE queue SET status = 'serving', called_at = datetime('now','localtime') WHERE id = ?",
-            (nxt[0],),
+            "UPDATE queue SET status = 'serving', called_at = ? WHERE id = ?",
+            (time_sync.utc_iso(), nxt[0]),
         )
         await db.commit()
     return {"number": nxt[1], "number_display": _fmt(nxt[1], padding)}
@@ -227,8 +242,8 @@ async def skip_current() -> dict | None:
             nxt = await cur.fetchone()
         if nxt:
             await db.execute(
-                "UPDATE queue SET status = 'serving', called_at = datetime('now','localtime') WHERE id = ?",
-                (nxt[0],),
+                "UPDATE queue SET status = 'serving', called_at = ? WHERE id = ?",
+                (time_sync.utc_iso(), nxt[0]),
             )
         await db.commit()
     skipped = _fmt(current[1], padding)
@@ -270,7 +285,22 @@ async def remove_last_waiting() -> dict | None:
 
 async def reset_queue():
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM queue")
+        # Keep served/skipped/held rows for statistics; only remove active entries
+        await db.execute("DELETE FROM queue WHERE status IN ('waiting', 'serving')")
+        # Reset counter so next queue starts from 1
+        await db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('queue_counter', '0')"
+        )
+        # Increment session so the queue list only shows post-reset entries
+        async with db.execute(
+            "SELECT value FROM settings WHERE key = 'queue_session'"
+        ) as cur:
+            row = await cur.fetchone()
+        new_session = int(row[0]) + 1 if row else 2
+        await db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('queue_session', ?)",
+            (str(new_session),),
+        )
         await db.commit()
 
 
@@ -324,6 +354,17 @@ def _make_stats_result(rows, labels_all: list, peak_rows) -> dict:
     }
 
 
+def _tz_expr(col: str, offset: float) -> str:
+    """Wrap a SQLite column with a UTC offset modifier so strftime returns local time."""
+    if offset == 0:
+        return col
+    sign = "+" if offset >= 0 else "-"
+    h = abs(int(offset))
+    m = int(round((abs(offset) - h) * 60))
+    mod = f"{sign}{h} hours" if m == 0 else f"{sign}{h} hours, {sign}{m} minutes"
+    return f"datetime({col}, '{mod}')"
+
+
 _CHART_SQL = """
     SELECT {lbl_expr} AS lbl,
            COUNT(*) AS total,
@@ -339,61 +380,63 @@ _CHART_SQL = """
 """
 
 _PEAK_SQL = """
-    SELECT strftime('%H', created_at) AS hour, COUNT(*) AS total
+    SELECT strftime('%H', {ca}) AS hour, COUNT(*) AS total
     FROM queue WHERE {where}
     GROUP BY hour ORDER BY hour
 """
 
 
-async def get_stats_daily(date_str: str) -> dict:
+async def get_stats_daily(date_str: str, tz_offset: float = 0.0) -> dict:
     """Hourly breakdown for a single calendar date (YYYY-MM-DD)."""
-    import calendar as _cal
-    where = "strftime('%Y-%m-%d', created_at) = ?"
+    ca = _tz_expr("created_at", tz_offset)
+    where = f"strftime('%Y-%m-%d', {ca}) = ?"
     params = (date_str,)
     labels_all = [f"{h:02d}" for h in range(24)]
 
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
-            _CHART_SQL.format(lbl_expr="strftime('%H', created_at)", where=where), params
+            _CHART_SQL.format(lbl_expr=f"strftime('%H', {ca})", where=where), params
         ) as cur:
             rows = await cur.fetchall()
-        async with db.execute(_PEAK_SQL.format(where=where), params) as cur:
+        async with db.execute(_PEAK_SQL.format(ca=ca, where=where), params) as cur:
             peak_rows = await cur.fetchall()
 
     return _make_stats_result(rows, labels_all, peak_rows)
 
 
-async def get_stats_monthly(year: int, month: int) -> dict:
+async def get_stats_monthly(year: int, month: int, tz_offset: float = 0.0) -> dict:
     """Daily breakdown for a given year+month."""
     import calendar as _cal
-    where = "strftime('%Y', created_at) = ? AND strftime('%m', created_at) = ?"
+    ca = _tz_expr("created_at", tz_offset)
+    where = f"strftime('%Y', {ca}) = ? AND strftime('%m', {ca}) = ?"
     params = (str(year).zfill(4), str(month).zfill(2))
     days_in_month = _cal.monthrange(year, month)[1]
     labels_all = [f"{d:02d}" for d in range(1, days_in_month + 1)]
 
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
-            _CHART_SQL.format(lbl_expr="strftime('%d', created_at)", where=where), params
+            _CHART_SQL.format(lbl_expr=f"strftime('%d', {ca})", where=where), params
         ) as cur:
             rows = await cur.fetchall()
-        async with db.execute(_PEAK_SQL.format(where=where), params) as cur:
+        async with db.execute(_PEAK_SQL.format(ca=ca, where=where), params) as cur:
             peak_rows = await cur.fetchall()
 
     return _make_stats_result(rows, labels_all, peak_rows)
 
 
-async def get_stats_yearly(year: int) -> dict:
+async def get_stats_yearly(year: int, tz_offset: float = 0.0) -> dict:
     """Monthly breakdown for a given year."""
-    where = "strftime('%Y', created_at) = ?"
+    ca = _tz_expr("created_at", tz_offset)
+    where = f"strftime('%Y', {ca}) = ?"
     params = (str(year).zfill(4),)
     labels_all = [f"{m:02d}" for m in range(1, 13)]
 
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
-            _CHART_SQL.format(lbl_expr="strftime('%m', created_at)", where=where), params
+            _CHART_SQL.format(lbl_expr=f"strftime('%m', {ca})", where=where), params
         ) as cur:
             rows = await cur.fetchall()
-        async with db.execute(_PEAK_SQL.format(where=where), params) as cur:
+        async with db.execute(_PEAK_SQL.format(ca=ca, where=where), params) as cur:
             peak_rows = await cur.fetchall()
 
     return _make_stats_result(rows, labels_all, peak_rows)
