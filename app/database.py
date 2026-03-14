@@ -299,6 +299,8 @@ async def reset_queue():
     async with aiosqlite.connect(DB_PATH) as db:
         # Keep served/skipped/held rows for statistics; only remove active entries
         await db.execute("DELETE FROM queue WHERE status IN ('waiting', 'serving')")
+        # Clear stale Messenger subscriptions — they're only valid within the current day
+        await db.execute("DELETE FROM messenger_subscriptions")
         # Reset counter so next queue starts from 1
         await db.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES ('queue_counter', '0')"
