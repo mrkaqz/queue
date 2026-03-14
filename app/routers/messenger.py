@@ -5,10 +5,11 @@ import json
 import re
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from app import database as db
+from app.routers.auth import require_auth
 
 router = APIRouter(prefix="/api/messenger", tags=["messenger"])
 
@@ -118,6 +119,28 @@ async def notify_messenger_subscribers(queue_number: int, display: str) -> None:
     # Clean up: subscriptions are one-shot (re-subscribe each visit)
     for psid in psids:
         await db.delete_messenger_sub(psid)
+
+
+# ── Diagnostic endpoint ───────────────────────────────────────────────────────
+
+@router.post("/test-token")
+async def test_token(_: str = Depends(require_auth)):
+    """Verify the saved Page Access Token against the Facebook Graph API."""
+    page_token = await db.get_setting("facebook_page_access_token")
+    if not page_token:
+        return JSONResponse({"ok": False, "error": "No Page Access Token configured."})
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(
+                "https://graph.facebook.com/v20.0/me",
+                params={"fields": "name,id", "access_token": page_token},
+            )
+        data = r.json()
+        if "error" in data:
+            return JSONResponse({"ok": False, "error": data["error"].get("message", "Unknown error")})
+        return JSONResponse({"ok": True, "page_name": data.get("name"), "page_id": data.get("id")})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)})
 
 
 # ── Webhook endpoints ─────────────────────────────────────────────────────────
