@@ -17,6 +17,8 @@ A lightweight, self-hosted queue management system designed for small businesses
 - **PIN Security** — 4-digit PIN locks `/admin` and `/settings` with backend-enforced session tokens (LAN & cloud-safe)
 - **SQLite** — Zero-config database, data persists via Docker volume
 - **Single Docker Container** — Easy to deploy anywhere on your local network or the cloud
+- **Google Analytics** — Optional GA4 tracking on all pages; enter your Measurement ID in Settings to enable
+- **SEO Ready** — Dynamic page titles with shop name, Open Graph tags, `robots.txt`, and `noindex` on protected pages
 
 ---
 
@@ -73,7 +75,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:2.2.3        # specific version
+ghcr.io/mrkaqz/queue:2.3.0        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -290,6 +292,7 @@ All settings are managed through `/settings` in the UI. No config files needed.
 | Facebook App Secret | *(empty)* | App Secret from Facebook App Settings → Basic |
 | Facebook Webhook Verify Token | *(empty)* | Any string you choose; used to verify the webhook with Facebook |
 | Facebook Page Username | *(empty)* | Page username for `m.me/` links, e.g. `myshoppage` |
+| Google Analytics ID | *(empty)* | GA4 Measurement ID (e.g. `G-XXXXXXXXXX`). Leave empty to disable tracking. |
 
 > **Web App URL** — set this to your server's LAN IP so the QR code on the TV points to the right address when customers scan it from their phones.
 
@@ -320,6 +323,8 @@ queue/
     └── static/
         ├── manifest.json        # PWA manifest
         ├── sw.js                # Service Worker (push notifications)
+        ├── analytics.js         # Google Analytics loader + dynamic SEO (title, OG tags)
+        ├── robots.txt           # Crawler rules (blocks admin/settings/stats/api)
         ├── tv/index.html        # TV display page
         ├── admin/index.html     # Admin/operator page
         ├── settings/index.html  # Settings page
@@ -359,6 +364,7 @@ queue/
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
+| `GET` | `/api/settings/public` | Public | Get non-sensitive settings (`shop_name`, `google_analytics_id`) |
 | `GET` | `/api/settings` | 🔒 | Get all settings |
 | `PUT` | `/api/settings` | 🔒 | Update settings |
 | `POST` | `/api/settings/logo` | 🔒 | Upload shop logo |
@@ -426,6 +432,45 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 | Messenger | Facebook Messenger Platform (Graph API v20) |
 | Frontend | Vanilla HTML / CSS / JavaScript |
 | Container | Docker + Docker Compose |
+
+---
+
+## Releases
+
+### v2.3.0 — 2026-03-15
+
+**Google Analytics & SEO**
+
+- **Google Analytics 4** — enter a GA4 Measurement ID (`G-XXXXXXXXXX`) in Settings to enable tracking across all pages. Leave the field empty to disable completely (no external requests made).
+- **Dynamic page titles** — browser tab and OG title automatically include the shop name (e.g. *"My Clinic — Queue Display"*).
+- **Open Graph tags** — `og:title`, `og:description`, and `og:url` injected on TV and status pages for rich social previews.
+- **`robots.txt`** — served at `/robots.txt`; blocks crawlers from `/admin`, `/settings`, `/stats`, and `/api/`. TV and status pages are open to indexing.
+- **`noindex` on protected pages** — admin, settings, and stats pages include `<meta name="robots" content="noindex, nofollow">`.
+- **New public endpoint** — `GET /api/settings/public` returns `shop_name` and `google_analytics_id` without authentication.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.3.0
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.3.0
+```
+
+---
+
+### v2.2.3 — 2026-03-14
+
+Maintenance release — bug fixes and stability improvements.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.2.3
+```
 
 ---
 
