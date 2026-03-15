@@ -134,6 +134,13 @@ async def server_time():
     return {"utc": time_sync.now_utc().strftime("%Y-%m-%dT%H:%M:%SZ")}
 
 
+# ── SEO / crawler routes ──────────────────────────────────────────────────────
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots_txt():
+    return FileResponse(STATIC_DIR / "robots.txt", media_type="text/plain")
+
+
 # ── Page routes ───────────────────────────────────────────────────────────────
 
 @app.get("/")

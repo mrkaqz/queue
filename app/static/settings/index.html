@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
   <title>Settings — Queue</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -191,6 +192,7 @@
     .pin-btn-cancel { background: #e2e8f0 !important; color: #1e293b !important; }
     .pin-btn-cancel:hover { background: #cbd5e1 !important; }
   </style>
+  <script src="/static/analytics.js"></script>
 </head>
 <body>
 
@@ -518,6 +520,16 @@
     </div>
   </div>
 
+  <!-- Google Analytics -->
+  <div class="card">
+    <div class="card-title">Google Analytics</div>
+    <div class="field">
+      <label for="google_analytics_id">Measurement ID</label>
+      <input type="text" id="google_analytics_id" placeholder="G-XXXXXXXXXX" />
+      <span class="hint">Enter your Google Analytics 4 Measurement ID to enable tracking on all pages. Leave empty to disable.</span>
+    </div>
+  </div>
+
   <!-- Save -->
   <div class="card" style="display:flex; align-items:center;">
     <button class="btn-save" id="save-btn" onclick="saveSettings()">Save Settings</button>
@@ -760,6 +772,7 @@
     'admin_sound', 'thai_voice', 'english_voice', 'vapid_email', 'vapid_public_key',
     'facebook_page_access_token', 'facebook_app_secret',
     'facebook_webhook_verify_token', 'facebook_page_username',
+    'google_analytics_id',
   ];
 
   const toast      = document.getElementById('toast');

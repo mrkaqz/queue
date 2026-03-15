@@ -28,6 +28,14 @@ _ALLOWED_LOGO_TYPES = {
 }
 
 
+@router.get("/public")
+async def get_public_settings():
+    return {
+        "shop_name": await db.get_setting("shop_name", "My Queue"),
+        "google_analytics_id": await db.get_setting("google_analytics_id", ""),
+    }
+
+
 @router.get("", dependencies=[Depends(require_auth)])
 async def get_settings():
     raw = await db.get_all_settings()

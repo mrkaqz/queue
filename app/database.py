@@ -29,6 +29,7 @@ SETTING_DEFAULTS = {
     "facebook_app_secret":        "",
     "facebook_webhook_verify_token": "",
     "facebook_page_username":     "",
+    "google_analytics_id":        "",
 }
 
 

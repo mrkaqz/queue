@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admin
+Disallow: /settings
+Disallow: /stats
+Disallow: /api/
+Allow: /status
+Allow: /tv
+Allow: /
