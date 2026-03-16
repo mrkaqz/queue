@@ -75,7 +75,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:2.3.0        # specific version
+ghcr.io/mrkaqz/queue:2.3.1        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -436,6 +436,26 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 ---
 
 ## Releases
+
+### v2.3.1 — 2026-03-16
+
+**Bug fixes & polish**
+
+- **TV sound badge auto-hide** — the "Tap to enable sound" banner now disappears automatically after 15 minutes if no one taps it, so it never clutters the TV display overnight or after setup.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.3.1
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.3.1
+```
+
+---
 
 ### v2.3.0 — 2026-03-15
 
