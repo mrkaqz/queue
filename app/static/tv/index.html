@@ -394,9 +394,12 @@
   const audioUnlockEl = document.getElementById('audio-unlock');
   let audioUnlocked = false;
 
+  let autoHideTimer = null;
+
   function unlockAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
+    clearTimeout(autoHideTimer);
     audioUnlockEl.classList.add('hidden');
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -417,6 +420,10 @@
       audioUnlocked = true;  // autoplay allowed, banner stays hidden
     }).catch(() => {
       audioUnlockEl.classList.remove('hidden');  // show tap-to-enable banner
+      // Auto-hide after 15 minutes if the user never taps
+      autoHideTimer = setTimeout(() => {
+        audioUnlockEl.classList.add('hidden');
+      }, 15 * 60 * 1000);
     });
   })();
 
