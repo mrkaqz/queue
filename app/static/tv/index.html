@@ -382,18 +382,10 @@
 
   // Initial load — fetch settings
   let soundOutput = 'tv'; // 'tv' | 'both' | 'admin'
-  fetch('/api/settings')
-    .then(r => r.json())
-    .then(s => {
-      buildQR(s.base_url || '');
-      soundOutput = s.admin_sound || 'tv';
-    })
-    .catch(() => buildQR(''));
 
   // ── Audio unlock (iOS autoplay workaround) ───────────────────────────────
   const audioUnlockEl = document.getElementById('audio-unlock');
   let audioUnlocked = false;
-
   let autoHideTimer = null;
 
   function unlockAudio() {
@@ -413,8 +405,9 @@
     } catch (e) {}
   }
 
-  // Test if autoplay is allowed; show banner only if blocked
-  (function checkAutoplay() {
+  // Test if autoplay is allowed; show banner only if blocked AND TV is expected to play audio
+  function checkAutoplay() {
+    if (soundOutput === 'admin') return; // TV won't play audio — no badge needed
     const silent = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
     silent.play().then(() => {
       audioUnlocked = true;  // autoplay allowed, banner stays hidden
@@ -425,7 +418,28 @@
         audioUnlockEl.classList.add('hidden');
       }, 15 * 60 * 1000);
     });
-  })();
+  }
+
+  // Sync badge visibility whenever soundOutput changes at runtime
+  function updateBadgeVisibility() {
+    if (soundOutput === 'admin') {
+      // TV won't play — always hide the badge
+      clearTimeout(autoHideTimer);
+      audioUnlockEl.classList.add('hidden');
+    } else if (!audioUnlocked) {
+      // TV plays but audio may be blocked — run the autoplay check
+      checkAutoplay();
+    }
+  }
+
+  fetch('/api/settings')
+    .then(r => r.json())
+    .then(s => {
+      buildQR(s.base_url || '');
+      soundOutput = s.admin_sound || 'tv';
+      checkAutoplay(); // run after soundOutput is known
+    })
+    .catch(() => { buildQR(''); checkAutoplay(); });
 
   // Any tap on the page also unlocks (for smart TVs using remote OK button)
   document.addEventListener('click', unlockAudio, { once: true });
@@ -533,7 +547,7 @@
         shopEl.textContent = msg.shop_name || 'My Queue';
         setTicker(msg.announcement_message);
         setLogo(msg.shop_logo || '');
-        if (msg.admin_sound !== undefined) soundOutput = msg.admin_sound;
+        if (msg.admin_sound !== undefined) { soundOutput = msg.admin_sound; updateBadgeVisibility(); }
         if (msg.timezone !== undefined) tvTzOffset = parseFloat(msg.timezone) || 0;
         fetch('/api/settings').then(r => r.json()).then(s => buildQR(s.base_url || '')).catch(() => {});
         return;

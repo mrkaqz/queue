@@ -75,7 +75,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:2.3.1        # specific version
+ghcr.io/mrkaqz/queue:2.3.2        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -436,6 +436,26 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 ---
 
 ## Releases
+
+### v2.3.2 — 2026-03-16
+
+**Bug fixes**
+
+- **TV sound badge hidden on Admin-only audio** — when Announcement Sound Output is set to "Admin only", the TV page no longer shows the "Tap to enable sound" badge since audio never plays there. The badge also reacts instantly when the setting is changed via WebSocket — no TV page reload needed.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.3.2
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.3.2
+```
+
+---
 
 ### v2.3.1 — 2026-03-16
 
