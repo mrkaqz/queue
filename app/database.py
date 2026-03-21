@@ -30,6 +30,9 @@ SETTING_DEFAULTS = {
     "facebook_webhook_verify_token": "",
     "facebook_page_username":     "",
     "google_analytics_id":        "",
+    "loyverse_webhook_secret":    "",
+    "loyverse_auto_advance":      "false",
+    "loyverse_queue_behaviour":   "smart",   # "smart" | "call_next_only"
 }
 
 

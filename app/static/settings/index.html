@@ -520,6 +520,39 @@
     </div>
   </div>
 
+  <!-- Loyverse POS Integration -->
+  <div class="card">
+    <div class="card-title">Loyverse POS Integration</div>
+    <div class="field">
+      <label for="loyverse_webhook_secret">Webhook Secret</label>
+      <input type="password" id="loyverse_webhook_secret" placeholder="Paste the secret from Loyverse dashboard" autocomplete="new-password" />
+      <span class="hint">Copy from Loyverse dashboard → Webhooks → your webhook entry. Leave empty to skip signature verification.</span>
+    </div>
+    <div class="field">
+      <label for="loyverse_auto_advance">Auto-advance queue on sale</label>
+      <select id="loyverse_auto_advance">
+        <option value="false">Disabled</option>
+        <option value="true">Enabled</option>
+      </select>
+      <span class="hint">When enabled, completing a sale in Loyverse POS will automatically advance the queue.</span>
+    </div>
+    <div class="field">
+      <label for="loyverse_queue_behaviour">Queue behaviour</label>
+      <select id="loyverse_queue_behaviour">
+        <option value="smart">Smart — call next if waiting, add + call if queue is empty</option>
+        <option value="call_next_only">Call next only (do nothing if queue is empty)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Webhook URL</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input type="text" id="loyverse_webhook_url" readonly style="flex:1; background:#f8fafc; color:#64748b;" />
+        <button type="button" onclick="copyLoyverseWebhookUrl()" style="padding:8px 14px; background:#e2e8f0; border:none; border-radius:6px; cursor:pointer; font-size:0.85rem; white-space:nowrap;">Copy</button>
+      </div>
+      <span class="hint">Paste this URL into Loyverse dashboard → Webhooks → Add webhook → select <strong>Receipt created</strong>.</span>
+    </div>
+  </div>
+
   <!-- Google Analytics -->
   <div class="card">
     <div class="card-title">Google Analytics</div>
@@ -773,6 +806,7 @@
     'facebook_page_access_token', 'facebook_app_secret',
     'facebook_webhook_verify_token', 'facebook_page_username',
     'google_analytics_id',
+    'loyverse_webhook_secret', 'loyverse_auto_advance', 'loyverse_queue_behaviour',
   ];
 
   const toast      = document.getElementById('toast');
@@ -852,7 +886,23 @@
 
   function copyWebhookUrl() {
     const el = document.getElementById('messenger_webhook_url');
-    navigator.clipboard.writeText(el.value).then(() => showToast('Webhook URL copied!', '#166534'));
+    navigator.clipboard.writeText(el.value).then(() => showToast('Webhook URL copied!', '#166634'));
+  }
+
+  function copyLoyverseWebhookUrl() {
+    const el = document.getElementById('loyverse_webhook_url');
+    navigator.clipboard.writeText(el.value).then(() => showToast('Webhook URL copied!', '#166634'));
+  }
+
+  function buildLoyverseWebhookUrl(baseUrl) {
+    try {
+      const u = new URL(baseUrl.trim() || location.origin);
+      if (u.protocol === 'http:' && u.port === '8080') { u.protocol = 'https:'; u.port = '8443'; }
+      u.pathname = '/api/loyverse/webhook';
+      return u.toString();
+    } catch {
+      return `${location.origin}/api/loyverse/webhook`;
+    }
   }
 
   async function testMessengerToken() {
@@ -891,9 +941,11 @@
         const el = document.getElementById(f);
         if (el && data[f] !== undefined) el.value = data[f];
       });
-      // Build webhook URL from web_app_url (base_url) setting
+      // Build webhook URLs from base_url setting
       const webhookEl = document.getElementById('messenger_webhook_url');
       if (webhookEl) webhookEl.value = buildWebhookUrl(data.base_url || '');
+      const loyverseWebhookEl = document.getElementById('loyverse_webhook_url');
+      if (loyverseWebhookEl) loyverseWebhookEl.value = buildLoyverseWebhookUrl(data.base_url || '');
       if (data.shop_logo) {
         document.getElementById('logo-preview').src = data.shop_logo;
         document.getElementById('logo-preview-wrap').style.display = 'block';

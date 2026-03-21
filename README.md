@@ -437,6 +437,31 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 
 ## Releases
 
+### v2.4.0 — 2026-03-21
+
+**New feature — Loyverse POS Integration**
+
+- Completing a sale in Loyverse POS automatically advances the queue — no manual "Call Next" needed.
+- **Smart mode** (default): calls next waiting patient; if queue is empty, auto-issues a new number and calls it immediately (walk-in support).
+- **Call-next-only mode**: advances only if a patient is already waiting; does nothing if the queue is empty.
+- HMAC-SHA256 signature verification (`X-Loyverse-Webhook-Signature`) keeps the endpoint secure.
+- Configurable from the Settings page: webhook secret, enable/disable toggle, and behaviour selector.
+- Webhook URL auto-generated in Settings → Loyverse POS Integration → copy and paste into Loyverse dashboard.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.4.0
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.4.0
+```
+
+---
+
 ### v2.3.2 — 2026-03-16
 
 **Bug fixes**

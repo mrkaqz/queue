@@ -39,12 +39,12 @@ async def add_queue():
     return entry
 
 
-@router.post("/call-next", dependencies=[Depends(require_auth)])
-async def call_next():
+async def _do_call_next() -> dict | None:
+    """Call next waiting entry. Returns the called entry dict, or None if queue is empty."""
     lang, voice_th, voice_en = await _get_voice_settings()
     called = await db.call_next()
     if not called:
-        return {"message": "No waiting numbers"}
+        return None
     status = await db.get_queue_status()
 
     audio_urls = await tts.get_or_generate(called["number"], lang, voice_th, voice_en)
@@ -57,13 +57,38 @@ async def call_next():
         "audio_urls": audio_urls,
     })
 
-    # Fire Messenger notifications as a background task (non-blocking)
     from app.routers.messenger import notify_messenger_subscribers
     asyncio.create_task(
         notify_messenger_subscribers(called["number"], called["number_display"])
     )
 
     return {**called, "audio_urls": audio_urls}
+
+
+async def _do_loyverse_advance(smart: bool = True) -> None:
+    """Advance queue on POS sale.
+    smart=True  → call-next if waiting, else auto-add + call (walk-in mode).
+    smart=False → call-next only; do nothing if queue is empty.
+    """
+    result = await _do_call_next()
+    if result is None and smart:
+        # Queue was empty — auto-issue next number and call it
+        entry = await db.add_queue_entry()
+        status = await db.get_queue_status()
+        await manager.broadcast({
+            "event": "queue_added",
+            "number": entry["number_display"],
+            "waiting": status["waiting"],
+        })
+        await _do_call_next()
+
+
+@router.post("/call-next", dependencies=[Depends(require_auth)])
+async def call_next():
+    result = await _do_call_next()
+    if result is None:
+        return {"message": "No waiting numbers"}
+    return result
 
 
 @router.post("/recall", dependencies=[Depends(require_auth)])

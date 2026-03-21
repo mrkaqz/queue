@@ -16,6 +16,7 @@ from app.routers import push as push_router
 from app.routers import auth as auth_router
 from app.routers import stats as stats_router
 from app.routers import messenger as messenger_router
+from app.routers import loyverse as loyverse_router
 
 STATIC_DIR = Path(__file__).parent / "static"
 AUDIO_DIR = db.DATA_DIR / "audio"
@@ -125,6 +126,7 @@ app.include_router(settings_router.router)
 app.include_router(push_router.router)
 app.include_router(stats_router.router)
 app.include_router(messenger_router.router)
+app.include_router(loyverse_router.router)
 
 
 # ── Time endpoint ─────────────────────────────────────────────────────────────
