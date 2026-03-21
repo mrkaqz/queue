@@ -13,6 +13,9 @@ A lightweight, self-hosted queue management system designed for small businesses
 - **PWA Web Push Notifications** — Notify customers on their phone when their number is called (works in background)
 - **Facebook Messenger Bot** — Customers subscribe by messaging the shop's Facebook Page; notified via Messenger when their number is called
 - **Loyverse POS Integration** — Completing a sale automatically advances the queue; smart mode auto-issues a walk-in number when the queue is empty
+- **Resume Held Patients** — each held entry shows a ▶ Resume button so staff can bring any patient back to serving in any order, with multiple holds supported simultaneously
+- **Auto-Advance Pause Toggle** — one-tap ⏸ button in Admin temporarily pauses Loyverse auto-advance without navigating to Settings; syncs live across all tabs
+- **Database Backup & Restore** — download a consistent DB snapshot for safe migration; restore from backup with validation and atomic file replacement
 - **Thai/English Voice Announcements** — Natural TTS via `edge-tts` (Microsoft Neural voices, no API key needed)
 - **Real-time Updates** — WebSocket-powered live sync across all connected devices
 - **PIN Security** — 4-digit PIN locks `/admin` and `/settings` with backend-enforced session tokens (LAN & cloud-safe)
@@ -76,7 +79,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:2.4.0        # specific version
+ghcr.io/mrkaqz/queue:2.4.1        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -390,6 +393,9 @@ queue/
 | `POST` | `/api/queue/recall` | 🔒 | Re-announce current number |
 | `POST` | `/api/queue/skip` | 🔒 | Skip current number |
 | `POST` | `/api/queue/hold` | 🔒 | Put current number on hold |
+| `POST` | `/api/queue/resume` | 🔒 | Resume a specific held number `{"number": 3}` |
+| `POST` | `/api/queue/loyverse-pause` | 🔒 | Temporarily pause Loyverse auto-advance |
+| `POST` | `/api/queue/loyverse-resume` | 🔒 | Resume Loyverse auto-advance |
 | `POST` | `/api/queue/remove-last` | 🔒 | Remove the last waiting number |
 | `POST` | `/api/queue/reset` | 🔒 | Reset all queues |
 
@@ -402,6 +408,8 @@ queue/
 | `PUT` | `/api/settings` | 🔒 | Update settings |
 | `POST` | `/api/settings/logo` | 🔒 | Upload shop logo |
 | `DELETE` | `/api/settings/logo` | 🔒 | Remove shop logo |
+| `GET` | `/api/settings/backup` | 🔒 | Download database snapshot (`queue_backup_YYYY-MM-DD.db`) |
+| `POST` | `/api/settings/restore` | 🔒 | Restore database from uploaded `.db` backup file |
 
 ### Push Notifications
 
