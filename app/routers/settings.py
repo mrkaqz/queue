@@ -1,6 +1,12 @@
 import asyncio
+import sqlite3
+import tempfile
+import os
+from datetime import date
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from app import database as db
 from app.websocket import manager
 from app.routers.auth import require_auth
@@ -89,6 +95,48 @@ async def upload_logo(file: UploadFile = File(...)):
         "admin_sound": settings.get("admin_sound", "tv"),
     })
     return {"logo_url": logo_url}
+
+
+@router.get("/backup", dependencies=[Depends(require_auth)])
+async def backup_db():
+    """Download a consistent snapshot of the SQLite database."""
+    today = date.today().isoformat()
+    tmp = tempfile.NamedTemporaryFile(
+        suffix=".db", prefix=f"queue_backup_{today}_", delete=False
+    )
+    tmp.close()
+    src = sqlite3.connect(str(db.DB_PATH))
+    dst = sqlite3.connect(tmp.name)
+    src.backup(dst)
+    dst.close()
+    src.close()
+    return FileResponse(
+        tmp.name,
+        media_type="application/octet-stream",
+        filename=f"queue_backup_{today}.db",
+        background=BackgroundTask(os.unlink, tmp.name),
+    )
+
+
+_SQLITE_MAGIC = b"SQLite format 3\x00"
+
+
+@router.post("/restore", dependencies=[Depends(require_auth)])
+async def restore_db(file: UploadFile = File(...)):
+    """Replace the database with an uploaded backup file."""
+    data = await file.read()
+    if not data.startswith(_SQLITE_MAGIC):
+        raise HTTPException(status_code=400, detail="Not a valid SQLite database file")
+
+    # Write to a temp path first, then atomically replace
+    tmp_path = db.DB_PATH.with_suffix(".restore_tmp")
+    tmp_path.write_bytes(data)
+    tmp_path.replace(db.DB_PATH)
+
+    # Re-run init_db() to apply any schema migrations missing from the backup
+    await db.init_db()
+
+    return {"ok": True, "message": "Database restored successfully. Reload the page."}
 
 
 @router.delete("/logo", dependencies=[Depends(require_auth)])

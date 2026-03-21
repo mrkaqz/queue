@@ -553,6 +553,22 @@
     </div>
   </div>
 
+  <!-- Database -->
+  <div class="card">
+    <div class="card-title">Database</div>
+    <div class="field">
+      <label>Backup</label>
+      <button class="btn-secondary" onclick="downloadBackup()">&#8595; Download Backup</button>
+      <span class="hint">Downloads a consistent snapshot of the current database (queue.db). Use this before migrating to a new machine.</span>
+    </div>
+    <div class="field">
+      <label>Restore</label>
+      <input type="file" id="restore-file" accept=".db" style="display:none" onchange="restoreDb(this)" />
+      <button class="btn-secondary" style="border-color:#dc2626; color:#dc2626;" onclick="document.getElementById('restore-file').click()">&#8593; Restore from Backup</button>
+      <span class="hint" style="color:#dc2626;">&#9888; This replaces ALL current data with the backup file. Only upload a file exported from this app.</span>
+    </div>
+  </div>
+
   <!-- Google Analytics -->
   <div class="card">
     <div class="card-title">Google Analytics</div>
@@ -982,6 +998,44 @@
     document.getElementById('remove-logo-btn').style.display = 'none';
     document.getElementById('logo-file').value = '';
     showToast('Logo removed');
+  }
+
+  // ── Database Backup / Restore ─────────────────────────────────────────────
+  function downloadBackup() {
+    showToast('Downloading backup…', '#166534');
+    const a = document.createElement('a');
+    a.href = '/api/settings/backup';
+    a.click();
+  }
+
+  async function restoreDb(input) {
+    if (!input.files[0]) return;
+    if (!confirm('⚠ This will replace ALL current data with the backup file.\n\nThis cannot be undone. Continue?')) {
+      input.value = '';
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+    try {
+      showToast('Restoring…', '#1d4ed8');
+      const res = await fetch('/api/settings/restore', {
+        method: 'POST',
+        body: formData,
+        headers: authOnlyHeaders(),
+      });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
+      const data = await res.json();
+      if (data.ok) {
+        showToast('Restored! Reloading…', '#166534');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showToast(data.detail || 'Restore failed', '#dc2626');
+      }
+    } catch(e) {
+      showToast('Restore error: ' + e.message, '#dc2626');
+    } finally {
+      input.value = '';
+    }
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────

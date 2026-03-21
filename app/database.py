@@ -33,6 +33,7 @@ SETTING_DEFAULTS = {
     "loyverse_webhook_secret":    "",
     "loyverse_auto_advance":      "false",
     "loyverse_queue_behaviour":   "smart",   # "smart" | "call_next_only"
+    "loyverse_advance_paused":    "false",   # temporary admin-page pause flag
 }
 
 
@@ -299,10 +300,31 @@ async def remove_last_waiting() -> dict | None:
     return {"number": row[1], "number_display": _fmt(row[1], padding)}
 
 
+async def resume_held(number: int) -> dict | None:
+    """Bring a specific held entry back to serving. Marks any current serving as served first."""
+    padding = int(await get_setting("queue_padding", "3"))
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE queue SET status = 'served' WHERE status = 'serving'")
+        async with db.execute(
+            "SELECT id, number FROM queue WHERE status = 'held' AND number = ? LIMIT 1",
+            (number,),
+        ) as cur:
+            held = await cur.fetchone()
+        if not held:
+            await db.commit()
+            return None
+        await db.execute(
+            "UPDATE queue SET status = 'serving', called_at = ? WHERE id = ?",
+            (time_sync.utc_iso(), held[0]),
+        )
+        await db.commit()
+    return {"number": held[1], "number_display": _fmt(held[1], padding)}
+
+
 async def reset_queue():
     async with aiosqlite.connect(DB_PATH) as db:
-        # Keep served/skipped/held rows for statistics; only remove active entries
-        await db.execute("DELETE FROM queue WHERE status IN ('waiting', 'serving')")
+        # Remove all active entries including held (held patients can't return after a reset)
+        await db.execute("DELETE FROM queue WHERE status IN ('waiting', 'serving', 'held')")
         # Clear stale Messenger subscriptions — they're only valid within the current day
         await db.execute("DELETE FROM messenger_subscriptions")
         # Reset counter so next queue starts from 1

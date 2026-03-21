@@ -357,6 +357,7 @@
       <button class="btn btn-warning" onclick="action('recall')">&#8635; Recall</button>
       <button class="btn btn-neutral" onclick="action('skip')">Skip &rsaquo;&rsaquo;</button>
       <button class="btn btn-neutral" onclick="action('hold')">Hold</button>
+      <button id="btn-adv-pause" class="btn btn-neutral" onclick="toggleAdvance()">&#9208; Pause Auto-Advance</button>
       <button class="btn btn-danger" onclick="confirmReset()">&times; Reset</button>
     </div>
   </div>
@@ -372,10 +373,11 @@
             <th>Status</th>
             <th>Created</th>
             <th>Called</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="queue-body">
-          <tr id="empty-row"><td colspan="5">No queue entries</td></tr>
+          <tr id="empty-row"><td colspan="6">No queue entries</td></tr>
         </tbody>
       </table>
     </div>
@@ -384,7 +386,7 @@
 
 <footer>
   <a href="https://github.com/mrkaqz/queue" target="_blank">github.com/mrkaqz/queue</a>
-  &nbsp;·&nbsp; v2.4.0 &nbsp;·&nbsp; 2026-03-21 &nbsp;·&nbsp; MIT License
+  &nbsp;·&nbsp; v2.4.1 &nbsp;·&nbsp; 2026-03-21 &nbsp;·&nbsp; MIT License
 </footer>
 
 <div id="toast"></div>
@@ -629,6 +631,7 @@
           <td><span class="badge badge-${entry.status}">${entry.status}</span></td>
           <td>${fmtTime(entry.created_at)}</td>
           <td>${entry.called_at ? fmtTime(entry.called_at) : '—'}</td>
+          <td>${entry.status === 'held' ? `<button class="btn btn-xs btn-primary" onclick="resumeQueue(${entry.number})">&#9654; Resume</button>` : ''}</td>
         </tr>
       `).join('');
     } catch(e) { console.error(e); }
@@ -642,6 +645,43 @@
     // Shift by the configured UTC offset (in hours), then display as UTC so the shift sticks
     const shifted = new Date(d.getTime() + adminTzOffset * 3600 * 1000);
     return shifted.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' });
+  }
+
+  // ── Hold / Resume ─────────────────────────────────────────────────────────
+  async function resumeQueue(number) {
+    try {
+      const res = await fetch('/api/queue/resume', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ number }),
+      });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
+      const data = await res.json();
+      if (data.message) showToast(data.message);
+      else if (data.number_display) showToast(`Resumed: ${data.number_display}`);
+    } catch(e) { showToast('Error: ' + e.message); }
+  }
+
+  // ── Loyverse Auto-Advance toggle ───────────────────────────────────────────
+  let advancePaused = false;
+
+  function updateAdvanceBtn() {
+    const btn = document.getElementById('btn-adv-pause');
+    if (!btn) return;
+    btn.innerHTML = advancePaused ? '&#9654; Resume Auto-Advance' : '&#9208; Pause Auto-Advance';
+    btn.className  = advancePaused ? 'btn btn-warning' : 'btn btn-neutral';
+  }
+
+  async function toggleAdvance() {
+    try {
+      const endpoint = advancePaused ? 'loyverse-resume' : 'loyverse-pause';
+      const res = await fetch(`/api/queue/${endpoint}`, { method: 'POST', headers: authHeaders() });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
+      const data = await res.json();
+      advancePaused = data.paused;
+      updateAdvanceBtn();
+      showToast(advancePaused ? 'Auto-Advance paused' : 'Auto-Advance resumed');
+    } catch(e) { showToast('Error: ' + e.message); }
   }
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
@@ -664,6 +704,10 @@
         shopNameEl.textContent = msg.shop_name || 'Queue Admin';
         if (msg.admin_sound !== undefined) soundOutput = msg.admin_sound;
         if (msg.timezone !== undefined) adminTzOffset = parseFloat(msg.timezone ?? '0') || 0;
+      }
+      if (msg.event === 'loyverse_advance_paused') {
+        advancePaused = msg.paused;
+        updateAdvanceBtn();
       }
     };
     ws.onclose = () => { connBadge.textContent = 'Offline'; connBadge.className = 'disconnected'; setTimeout(connect, 3000); };

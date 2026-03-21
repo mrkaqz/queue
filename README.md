@@ -476,6 +476,29 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 
 ## Releases
 
+### v2.4.1 — 2026-03-21
+
+**Unhold / Resume + Loyverse Auto-Advance pause button**
+
+- **Resume held patients** — each held entry in the queue list now shows a **▶ Resume** button. Staff can bring any held patient back to serving in any order (supports multiple patients on hold simultaneously).
+- **Fix: Reset now clears held entries** — previously, held entries were preserved on reset causing orphan records. Reset now correctly removes waiting, serving, and held entries.
+- **⏸ Pause Auto-Advance button in Admin** — one-tap toggle to temporarily pause or resume Loyverse auto-advance without navigating to Settings. Syncs live across all open admin tabs via WebSocket.
+- **Loyverse auto-advance respects pause flag** — when paused, POS sales no longer trigger queue advance until manually resumed.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.4.1
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.4.1
+```
+
+---
+
 ### v2.4.0 — 2026-03-21
 
 **New feature — Loyverse POS Integration**

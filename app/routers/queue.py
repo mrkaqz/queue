@@ -1,6 +1,7 @@
 import asyncio
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from app import database as db
 from app import tts
 from app.websocket import manager
@@ -67,9 +68,13 @@ async def _do_call_next() -> dict | None:
 
 async def _do_loyverse_advance(smart: bool = True) -> None:
     """Advance queue on POS sale.
+    Respects the admin-page pause toggle (loyverse_advance_paused).
     smart=True  → call-next if waiting, else auto-add + call (walk-in mode).
     smart=False → call-next only; do nothing if queue is empty.
     """
+    if await db.get_setting("loyverse_advance_paused") == "true":
+        return
+
     result = await _do_call_next()
     if result is None and smart:
         # Queue was empty — auto-issue next number and call it
@@ -140,6 +145,42 @@ async def hold():
         "held": result["number_display"],
     })
     return result
+
+
+class ResumeRequest(BaseModel):
+    number: int
+
+
+@router.post("/resume", dependencies=[Depends(require_auth)])
+async def resume_held(req: ResumeRequest):
+    result = await db.resume_held(req.number)
+    if not result:
+        return {"message": "No held entry found for that number"}
+    status = await db.get_queue_status()
+    lang, voice_th, voice_en = await _get_voice_settings()
+    audio_urls = await tts.get_or_generate(result["number"], lang, voice_th, voice_en)
+    await manager.broadcast({
+        "event": "queue_called",
+        "current": result["number_display"],
+        "next": status["next"],
+        "waiting": status["waiting"],
+        "audio_urls": audio_urls,
+    })
+    return {**result, "audio_urls": audio_urls}
+
+
+@router.post("/loyverse-pause", dependencies=[Depends(require_auth)])
+async def pause_loyverse_advance():
+    await db.set_setting("loyverse_advance_paused", "true")
+    await manager.broadcast({"event": "loyverse_advance_paused", "paused": True})
+    return {"paused": True}
+
+
+@router.post("/loyverse-resume", dependencies=[Depends(require_auth)])
+async def resume_loyverse_advance():
+    await db.set_setting("loyverse_advance_paused", "false")
+    await manager.broadcast({"event": "loyverse_advance_paused", "paused": False})
+    return {"paused": False}
 
 
 @router.post("/remove-last", dependencies=[Depends(require_auth)])
