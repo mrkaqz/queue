@@ -58,10 +58,14 @@ async def _do_call_next() -> dict | None:
         "audio_urls": audio_urls,
     })
 
-    from app.routers.messenger import notify_messenger_subscribers
+    from app.routers.messenger import notify_messenger_subscribers, notify_messenger_advance
     asyncio.create_task(
         notify_messenger_subscribers(called["number"], called["number_display"])
     )
+    if status.get("next_number"):
+        asyncio.create_task(
+            notify_messenger_advance(status["next_number"], status["next"])
+        )
 
     return {**called, "audio_urls": audio_urls}
 

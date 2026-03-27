@@ -373,11 +373,12 @@
             <th>Status</th>
             <th>Created</th>
             <th>Called</th>
+            <th>Wait Time</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="queue-body">
-          <tr id="empty-row"><td colspan="6">No queue entries</td></tr>
+          <tr id="empty-row"><td colspan="7">No queue entries</td></tr>
         </tbody>
       </table>
     </div>
@@ -631,10 +632,22 @@
           <td><span class="badge badge-${entry.status}">${entry.status}</span></td>
           <td>${fmtTime(entry.created_at)}</td>
           <td>${entry.called_at ? fmtTime(entry.called_at) : '—'}</td>
+          <td>${fmtWaitTime(entry.created_at, entry.called_at)}</td>
           <td>${entry.status === 'held' ? `<button class="btn btn-xs btn-primary" onclick="resumeQueue(${entry.number})">&#9654; Resume</button>` : ''}</td>
         </tr>
       `).join('');
     } catch(e) { console.error(e); }
+  }
+
+  function fmtWaitTime(created_at, called_at) {
+    if (!created_at || !called_at) return '—';
+    const a = new Date(created_at.replace(' ', 'T') + 'Z');
+    const b = new Date(called_at.replace(' ', 'T') + 'Z');
+    const ms = b - a;
+    if (ms < 0) return '—';
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m}m ${s}s`;
   }
 
   function fmtTime(ts) {
