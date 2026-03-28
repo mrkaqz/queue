@@ -120,6 +120,38 @@ async def notify_messenger_subscribers(queue_number: int, display: str) -> None:
         await db.delete_messenger_sub(psid)
 
 
+async def notify_messenger_advance(queue_number: int, display: str) -> None:
+    """Advance notice: notify subscriber of queue_number that they are 1 queue away."""
+    token = await db.get_setting("facebook_page_access_token")
+    if not token:
+        return
+
+    psids = await db.get_messenger_subs(queue_number)
+    if not psids:
+        return
+
+    msg = (
+        f"⏰ อีก 1 คิว! หมายเลขคิว {display} กรุณาเดินทางมายังคลินิกได้เลย\n"
+        f"1 queue away! Queue {display} – please make your way to the clinic now."
+    )
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        for psid in psids:
+            try:
+                await client.post(
+                    _GRAPH_URL,
+                    params={"access_token": token},
+                    json={
+                        "recipient":      {"id": psid},
+                        "messaging_type": "UPDATE",
+                        "message":        {"text": msg},
+                    },
+                )
+            except Exception as e:
+                print(f"[Messenger] Advance notify failed for {psid}: {e}")
+    # Do NOT delete subscriptions — subscriber still needs their own call notification
+
+
 # ── Diagnostic endpoint ───────────────────────────────────────────────────────
 
 @router.post("/test-token")

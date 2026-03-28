@@ -484,6 +484,27 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 
 ## Releases
 
+### v2.4.2 — 2026-03-27
+
+**Admin wait time column + Facebook Messenger advance notification**
+
+- **Wait Time column in Admin** — queue list now shows how long each patient waited (time from ticket issued to number called), displayed as `Xm Ys`.
+- **Facebook Messenger advance notification** — when a queue number is called, the subscriber of the *next* queue number receives an early "1 queue away" alert so they can head to the clinic in time. Their subscription is preserved so they still receive the normal notification when their own number is called.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.4.2
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.4.2
+```
+
+---
+
 ### v2.4.1 — 2026-03-21
 
 **Unhold / Resume + Loyverse Auto-Advance pause button**

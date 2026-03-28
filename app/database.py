@@ -156,6 +156,7 @@ async def get_queue_status() -> dict:
         "current": _fmt(serving["number"], padding) if serving else None,
         "current_number": serving["number"] if serving else None,
         "next": _fmt(nxt["number"], padding) if nxt else None,
+        "next_number": nxt["number"] if nxt else None,
         "waiting": waiting,
     }
 
