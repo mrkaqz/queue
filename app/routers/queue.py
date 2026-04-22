@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from app import database as db
 from app import tts
+from app import printer as _printer
 from app.websocket import manager
 from app.routers.auth import require_auth
 
@@ -37,6 +38,15 @@ async def add_queue():
         "number": entry["number_display"],
         "waiting": status["waiting"],
     })
+    # Auto-print ticket if enabled
+    if await db.get_setting("xprinter_enabled") == "true":
+        ip = (await db.get_setting("xprinter_ip") or "").strip()
+        if ip:
+            port      = int(await db.get_setting("xprinter_port") or "9100")
+            shop_name = await db.get_setting("shop_name") or "My Queue"
+            asyncio.create_task(
+                _printer.print_ticket(entry["number"], shop_name, ip, port)
+            )
     return entry
 
 
@@ -199,6 +209,30 @@ async def remove_last():
         "waiting": status["waiting"],
     })
     return result
+
+
+@router.post("/print-ticket", dependencies=[Depends(require_auth)])
+async def print_ticket_endpoint(data: dict = {}):
+    """Print a queue ticket to the configured Xprinter.
+    Accepts optional {"number": N}. Falls back to the last issued number (queue_counter).
+    """
+    ip = (await db.get_setting("xprinter_ip") or "").strip()
+    if not ip:
+        return {"error": "Printer IP not configured in Settings"}
+
+    port      = int(await db.get_setting("xprinter_port") or "9100")
+    shop_name = await db.get_setting("shop_name") or "My Queue"
+
+    number = data.get("number")
+    if not number:
+        number = int(await db.get_setting("queue_counter") or "0")
+    if not number:
+        return {"error": "No queue number to print (queue is empty)"}
+
+    asyncio.create_task(
+        _printer.print_ticket(int(number), shop_name, ip, port)
+    )
+    return {"ok": True, "number": number}
 
 
 @router.post("/reset", dependencies=[Depends(require_auth)])

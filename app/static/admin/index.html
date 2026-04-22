@@ -353,6 +353,7 @@
     <div id="actions">
       <button class="btn btn-primary" onclick="action('call-next')">Call Next &rarr;</button>
       <button class="btn btn-success" onclick="action('add')">+ Add Queue</button>
+      <button class="btn btn-neutral" onclick="printLastTicket()">🖨 Print Ticket</button>
       <button class="btn btn-neutral" onclick="action('remove-last')">&minus; Remove Last</button>
       <button class="btn btn-warning" onclick="action('recall')">&#8635; Recall</button>
       <button class="btn btn-neutral" onclick="action('skip')">Skip &rsaquo;&rsaquo;</button>
@@ -387,7 +388,7 @@
 
 <footer>
   <a href="https://github.com/mrkaqz/queue" target="_blank">github.com/mrkaqz/queue</a>
-  &nbsp;·&nbsp; v2.4.2 &nbsp;·&nbsp; 2026-03-27 &nbsp;·&nbsp; MIT License
+  &nbsp;·&nbsp; v2.5.0 &nbsp;·&nbsp; 2026-04-22 &nbsp;·&nbsp; MIT License
 </footer>
 
 <div id="toast"></div>
@@ -695,6 +696,16 @@
       updateAdvanceBtn();
       showToast(advancePaused ? 'Auto-Advance paused' : 'Auto-Advance resumed');
     } catch(e) { showToast('Error: ' + e.message); }
+  }
+
+  async function printLastTicket() {
+    try {
+      const res = await fetch('/api/queue/print-ticket', { method: 'POST', headers: authHeaders(), body: JSON.stringify({}) });
+      if (res.status === 401) { clearToken(); showUnlockModal(); return; }
+      const d = await res.json();
+      if (d.error) showToast('🖨 ' + d.error);
+      else showToast(`🖨 Printing ticket ${d.number}`);
+    } catch(e) { showToast('Print error: ' + e.message); }
   }
 
   // ── WebSocket ─────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ A lightweight, self-hosted queue management system designed for small businesses
 - **Resume Held Patients** — each held entry shows a ▶ Resume button so staff can bring any patient back to serving in any order, with multiple holds supported simultaneously
 - **Auto-Advance Pause Toggle** — one-tap ⏸ button in Admin temporarily pauses Loyverse auto-advance without navigating to Settings; syncs live across all tabs
 - **Database Backup & Restore** — download a consistent DB snapshot for safe migration; restore from backup with validation and atomic file replacement
+- **Xprinter Ticket Printing** — Print queue tickets from the admin page via ESC/POS over TCP; auto-print on Add Queue; manual 🖨 Print Ticket button always available; paper auto-cuts, cash drawer stays closed
 - **Thai/English Voice Announcements** — Natural TTS via `edge-tts` (Microsoft Neural voices, no API key needed)
 - **Real-time Updates** — WebSocket-powered live sync across all connected devices
 - **PIN Security** — 4-digit PIN locks `/admin` and `/settings` with backend-enforced session tokens (LAN & cloud-safe)
@@ -79,7 +80,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:2.4.1        # specific version
+ghcr.io/mrkaqz/queue:2.5.0        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -325,6 +326,8 @@ All settings are managed through `/settings` in the UI. No config files needed.
 | Facebook Webhook Verify Token | *(empty)* | Any string you choose; used to verify the webhook with Facebook |
 | Facebook Page Username | *(empty)* | Page username for `m.me/` links, e.g. `myshoppage` |
 | Google Analytics ID | *(empty)* | GA4 Measurement ID (e.g. `G-XXXXXXXXXX`). Leave empty to disable tracking. |
+| Xprinter IP Address | *(empty)* | LAN IP of the Xprinter for ESC/POS ticket printing (port 9100) |
+| Xprinter Auto-print | `false` | When enabled, a ticket is printed automatically every time a queue number is added |
 | Loyverse Webhook Secret | *(empty)* | HMAC secret from Loyverse dashboard — used to verify incoming webhook signatures |
 | Loyverse Auto-Advance | `false` | Enable automatic queue advance when a Loyverse sale is completed |
 | Loyverse Queue Behaviour | `smart` | `smart` = call next if waiting, auto-issue + call if empty; `call_next_only` = do nothing if queue is empty |
@@ -346,6 +349,7 @@ queue/
     ├── database.py              # SQLite setup & all DB helpers
     ├── models.py                # Pydantic data models
     ├── tts.py                   # edge-tts voice generation & file cache
+    ├── printer.py               # ESC/POS ticket printing over TCP (Xprinter)
     ├── number_to_words.py       # Integer → Thai/English word converter
     ├── websocket.py             # WebSocket broadcast manager
     ├── routers/
@@ -396,6 +400,7 @@ queue/
 | `POST` | `/api/queue/resume` | 🔒 | Resume a specific held number `{"number": 3}` |
 | `POST` | `/api/queue/loyverse-pause` | 🔒 | Temporarily pause Loyverse auto-advance |
 | `POST` | `/api/queue/loyverse-resume` | 🔒 | Resume Loyverse auto-advance |
+| `POST` | `/api/queue/print-ticket` | 🔒 | Print a queue ticket to the configured Xprinter |
 | `POST` | `/api/queue/remove-last` | 🔒 | Remove the last waiting number |
 | `POST` | `/api/queue/reset` | 🔒 | Reset all queues |
 
@@ -483,6 +488,30 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 ---
 
 ## Releases
+
+### v2.5.0 — 2026-04-22
+
+**Xprinter Ticket Printing**
+
+- **Admin page 🖨 Print Ticket button** — always visible next to Add Queue; prints the last queue number on demand without navigating anywhere.
+- **Auto-print on Add Queue** — enable in Settings → Ticket Printer to print a ticket automatically every time a queue number is added.
+- **ESC/POS over TCP** — the server connects directly to the Xprinter on port 9100, identical protocol to the physical ESP32 button device. Paper auto-cuts after every ticket; cash drawer is NOT triggered (no `ESC p` command sent).
+- **🖨 Test Print** in Settings — verify printer connection without adding a real queue entry.
+- Settings: Printer IP address and auto-print toggle.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.5.0
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.5.0
+```
+
+---
 
 ### v2.4.2 — 2026-03-27
 

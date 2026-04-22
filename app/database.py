@@ -34,6 +34,9 @@ SETTING_DEFAULTS = {
     "loyverse_auto_advance":      "false",
     "loyverse_queue_behaviour":   "smart",   # "smart" | "call_next_only"
     "loyverse_advance_paused":    "false",   # temporary admin-page pause flag
+    "xprinter_ip":                "",
+    "xprinter_port":              "9100",
+    "xprinter_enabled":           "false",   # auto-print on Add Queue
 }
 
 

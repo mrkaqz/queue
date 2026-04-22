@@ -520,6 +520,27 @@
     </div>
   </div>
 
+  <!-- Ticket Printer (Xprinter) -->
+  <div class="card">
+    <div class="card-title">Ticket Printer (Xprinter)</div>
+    <div class="field">
+      <label for="xprinter_ip">Printer IP Address</label>
+      <input type="text" id="xprinter_ip" placeholder="e.g. 192.168.88.252" />
+      <span class="hint">LAN IP of your Xprinter. Connects on port 9100 using ESC/POS over TCP — same protocol as the physical ticket printer button.</span>
+    </div>
+    <div class="field">
+      <label for="xprinter_enabled">Auto-print when queue is added</label>
+      <select id="xprinter_enabled">
+        <option value="false">Disabled — print manually from Admin page</option>
+        <option value="true">Enabled — print ticket automatically on Add Queue</option>
+      </select>
+    </div>
+    <div class="field">
+      <button type="button" onclick="testPrint()" style="padding:8px 16px; background:#e2e8f0; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem;">🖨 Test Print</button>
+      <span class="hint">Prints a test ticket with the current queue number. Save settings first.</span>
+    </div>
+  </div>
+
   <!-- Loyverse POS Integration -->
   <div class="card">
     <div class="card-title">Loyverse POS Integration</div>
@@ -822,6 +843,7 @@
     'facebook_page_access_token', 'facebook_app_secret',
     'facebook_webhook_verify_token', 'facebook_page_username',
     'google_analytics_id',
+    'xprinter_ip', 'xprinter_enabled',
     'loyverse_webhook_secret', 'loyverse_auto_advance', 'loyverse_queue_behaviour',
   ];
 
@@ -998,6 +1020,18 @@
     document.getElementById('remove-logo-btn').style.display = 'none';
     document.getElementById('logo-file').value = '';
     showToast('Logo removed');
+  }
+
+  // ── Xprinter ──────────────────────────────────────────────────────────────
+  async function testPrint() {
+    const res = await fetch('/api/queue/print-ticket', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({}),
+    });
+    const d = await res.json();
+    if (d.error) showToast(d.error, '#dc2626');
+    else showToast(`🖨 Printing ticket ${d.number}`, '#166534');
   }
 
   // ── Database Backup / Restore ─────────────────────────────────────────────
