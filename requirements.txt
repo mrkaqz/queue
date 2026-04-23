@@ -6,3 +6,4 @@ pywebpush
 python-multipart
 httpx
 ntplib
+Pillow

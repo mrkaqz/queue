@@ -80,7 +80,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:2.5.3        # specific version
+ghcr.io/mrkaqz/queue:2.5.4        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -488,6 +488,28 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 ---
 
 ## Releases
+
+### v2.5.4 — 2026-04-23
+
+**Smooth large ticket numbers (TrueType raster printing)**
+
+- Large ticket mode now renders the queue number using **DejaVu Sans Bold** via Pillow and sends it as an ESC/POS `GS v 0` raster image. The number is crisp and smooth at the printer's native 203 DPI instead of the blocky/pixelated bitmap scaling of the previous `GS !` command.
+- Added `Pillow` to Python dependencies; added `fonts-dejavu-core` to the Docker image.
+- Falls back to bitmap scaling automatically if Pillow or the font is unavailable.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.5.4
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.5.4
+```
+
+---
 
 ### v2.5.3 — 2026-04-23
 
