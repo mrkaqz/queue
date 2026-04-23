@@ -80,7 +80,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:2.5.2        # specific version
+ghcr.io/mrkaqz/queue:2.5.3        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -488,6 +488,26 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 ---
 
 ## Releases
+
+### v2.5.3 — 2026-04-23
+
+**Ticket size option**
+
+- **Normal / Large ticket size** — new setting in Settings → Ticket Printer. Large mode prints the queue number at 6× height × 6× width using the ESC/POS `GS !` command, making it easy to read from a distance. Normal mode keeps the compact double-size format.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.5.3
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.5.3
+```
+
+---
 
 ### v2.5.2 — 2026-04-23
 

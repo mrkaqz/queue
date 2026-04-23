@@ -541,6 +541,13 @@
       </select>
     </div>
     <div class="field">
+      <label for="xprinter_ticket_size">Ticket Size</label>
+      <select id="xprinter_ticket_size">
+        <option value="normal">Normal — compact ticket (double-size queue number)</option>
+        <option value="large">Large — extra-big queue number (6× height &amp; width)</option>
+      </select>
+    </div>
+    <div class="field">
       <button type="button" onclick="testPrint()" style="padding:8px 16px; background:#e2e8f0; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem;">🖨 Test Print</button>
       <span class="hint">Prints a test ticket with the current queue number. Save settings first.</span>
     </div>
@@ -848,7 +855,7 @@
     'facebook_page_access_token', 'facebook_app_secret',
     'facebook_webhook_verify_token', 'facebook_page_username',
     'google_analytics_id',
-    'xprinter_ip', 'xprinter_shop_name', 'xprinter_enabled',
+    'xprinter_ip', 'xprinter_shop_name', 'xprinter_enabled', 'xprinter_ticket_size',
     'loyverse_webhook_secret', 'loyverse_auto_advance', 'loyverse_queue_behaviour',
   ];
 

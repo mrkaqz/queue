@@ -13,11 +13,13 @@ ESC = b'\x1b'
 GS  = b'\x1d'
 
 
-async def print_ticket(number: int, shop_name: str, ip: str, port: int = 9100, tz_offset: int = 0) -> None:
+async def print_ticket(number: int, shop_name: str, ip: str, port: int = 9100,
+                       tz_offset: int = 0, size: str = "normal") -> None:
     """Send an ESC/POS queue ticket to the Xprinter over TCP (non-blocking).
-    tz_offset: UTC offset in hours (e.g. 7 for Bangkok UTC+7)."""
+    tz_offset: UTC offset in hours (e.g. 7 for Bangkok UTC+7).
+    size: 'normal' (default) or 'large' (6× queue number via GS ! 0x55)."""
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, _print_sync, number, shop_name, ip, port, tz_offset)
+    await loop.run_in_executor(None, _print_sync, number, shop_name, ip, port, tz_offset, size)
 
 
 def _safe_ascii(text: str) -> bytes:
@@ -27,7 +29,8 @@ def _safe_ascii(text: str) -> bytes:
     return text.encode('ascii', errors='replace') + b'\n'
 
 
-def _print_sync(number: int, shop_name: str, ip: str, port: int, tz_offset: int = 0) -> None:
+def _print_sync(number: int, shop_name: str, ip: str, port: int,
+                tz_offset: int = 0, size: str = "normal") -> None:
     """Blocking ESC/POS send — called from a thread executor."""
     try:
         local_now = datetime.now(timezone.utc) + timedelta(hours=tz_offset)
@@ -37,17 +40,36 @@ def _print_sync(number: int, shop_name: str, ip: str, port: int, tz_offset: int 
 
             w(ESC + b'@')             # init printer
             w(ESC + b'a\x01')         # center alignment
-            w(ESC + b'!\x08')         # bold, normal height
-            w(_safe_ascii(shop_name))  # ASCII only — Thai/non-Latin causes garbled output
-            w(ESC + b'!\x00')         # normal
-            w(b'- Queue No. -\n')
-            w(ESC + b'!\x30')         # double-width + double-height + bold
-            w(f'{number:03d}\n'.encode())
-            w(ESC + b'!\x00')         # normal
-            w(local_now.strftime('%d/%m/%Y %H:%M\n').encode())
+
+            if size == "large":
+                # ── Large ticket ──────────────────────────────────────────────
+                # Shop name: bold, normal height
+                w(ESC + b'!\x08')
+                w(_safe_ascii(shop_name))
+                w(ESC + b'!\x00')         # normal
+                w(b'\n')
+                w(b'- Queue No. -\n')
+                w(b'\n')
+                # Queue number: GS ! n → 6× width × 6× height (n = 0x55)
+                w(GS  + b'!\x55')
+                w(f'{number:03d}\n'.encode())
+                w(GS  + b'!\x00')         # reset character size
+                w(b'\n')
+                w(local_now.strftime('%d/%m/%Y %H:%M\n').encode())
+            else:
+                # ── Normal ticket (default) ───────────────────────────────────
+                w(ESC + b'!\x08')         # bold, normal height
+                w(_safe_ascii(shop_name))  # ASCII only
+                w(ESC + b'!\x00')         # normal
+                w(b'- Queue No. -\n')
+                w(ESC + b'!\x30')         # double-width + double-height
+                w(f'{number:03d}\n'.encode())
+                w(ESC + b'!\x00')         # normal
+                w(local_now.strftime('%d/%m/%Y %H:%M\n').encode())
+
             w(b'\n\n\n\n\n\n')        # extra feeds so the cut clears the last printed line
             w(GS + b'V\x01')          # partial cut
 
-        print(f'[printer] Ticket {number:03d} sent to {ip}:{port}')
+        print(f'[printer] Ticket {number:03d} ({size}) sent to {ip}:{port}')
     except OSError as exc:
         print(f'[printer] ERROR — could not print ticket {number:03d} to {ip}:{port}: {exc}')
