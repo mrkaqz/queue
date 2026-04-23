@@ -45,7 +45,7 @@ def _print_sync(number: int, shop_name: str, ip: str, port: int, tz_offset: int 
             w(f'{number:03d}\n'.encode())
             w(ESC + b'!\x00')         # normal
             w(local_now.strftime('%d/%m/%Y %H:%M\n').encode())
-            w(b'\n\n\n')              # extra feeds so the cut clears the last printed line
+            w(b'\n\n\n\n\n\n')        # extra feeds so the cut clears the last printed line
             w(GS + b'V\x01')          # partial cut
 
         print(f'[printer] Ticket {number:03d} sent to {ip}:{port}')
