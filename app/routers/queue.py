@@ -45,8 +45,9 @@ async def add_queue():
             port      = int(await db.get_setting("xprinter_port") or "9100")
             shop_name = (await db.get_setting("xprinter_shop_name") or "").strip() \
                         or await db.get_setting("shop_name") or "My Queue"
+            tz_offset = int(await db.get_setting("timezone") or "0")
             asyncio.create_task(
-                _printer.print_ticket(entry["number"], shop_name, ip, port)
+                _printer.print_ticket(entry["number"], shop_name, ip, port, tz_offset)
             )
     return entry
 
@@ -224,6 +225,7 @@ async def print_ticket_endpoint(data: dict = {}):
     port      = int(await db.get_setting("xprinter_port") or "9100")
     shop_name = (await db.get_setting("xprinter_shop_name") or "").strip() \
                 or await db.get_setting("shop_name") or "My Queue"
+    tz_offset = int(await db.get_setting("timezone") or "0")
 
     number = data.get("number")
     if not number:
@@ -232,7 +234,7 @@ async def print_ticket_endpoint(data: dict = {}):
         return {"error": "No queue number to print (queue is empty)"}
 
     asyncio.create_task(
-        _printer.print_ticket(int(number), shop_name, ip, port)
+        _printer.print_ticket(int(number), shop_name, ip, port, tz_offset)
     )
     return {"ok": True, "number": number}
 

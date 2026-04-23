@@ -80,7 +80,7 @@ Pre-built images are published automatically to the GitHub Container Registry on
 
 ```
 ghcr.io/mrkaqz/queue:latest       # latest main branch
-ghcr.io/mrkaqz/queue:2.5.0        # specific version
+ghcr.io/mrkaqz/queue:2.5.2        # specific version
 ```
 
 [![Build & Push to GHCR](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/mrkaqz/queue/actions/workflows/docker-publish.yml)
@@ -488,6 +488,27 @@ Web Push requires HTTPS. The container auto-generates a self-signed certificate 
 ---
 
 ## Releases
+
+### v2.5.2 — 2026-04-23
+
+**Ticket Printer — spacing & timezone fixes**
+
+- **Extra paper feed before cut** — added 3 line feeds before the partial-cut command so the cutter clears the last printed line and tickets are cleanly separated.
+- **Correct local time on ticket** — date/time on the printed ticket now uses the UTC offset configured in Settings → Timezone, matching the clock displayed in the admin page.
+
+#### Docker
+
+```bash
+docker pull ghcr.io/mrkaqz/queue:2.5.2
+```
+
+Or pin in `docker-compose.yml`:
+
+```yaml
+image: ghcr.io/mrkaqz/queue:2.5.2
+```
+
+---
 
 ### v2.5.0 — 2026-04-22
 
