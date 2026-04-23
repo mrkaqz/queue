@@ -529,6 +529,11 @@
       <span class="hint">LAN IP of your Xprinter. Connects on port 9100 using ESC/POS over TCP — same protocol as the physical ticket printer button.</span>
     </div>
     <div class="field">
+      <label for="xprinter_shop_name">Ticket Header (English / ASCII only)</label>
+      <input type="text" id="xprinter_shop_name" placeholder="e.g. Saimoon Pet Clinic" />
+      <span class="hint">Name printed at the top of each ticket. <strong>Use English only</strong> — ESC/POS thermal printers cannot print Thai characters. If left empty, the main Shop Name is used (non-ASCII characters will be replaced with ?).</span>
+    </div>
+    <div class="field">
       <label for="xprinter_enabled">Auto-print when queue is added</label>
       <select id="xprinter_enabled">
         <option value="false">Disabled — print manually from Admin page</option>
@@ -843,7 +848,7 @@
     'facebook_page_access_token', 'facebook_app_secret',
     'facebook_webhook_verify_token', 'facebook_page_username',
     'google_analytics_id',
-    'xprinter_ip', 'xprinter_enabled',
+    'xprinter_ip', 'xprinter_shop_name', 'xprinter_enabled',
     'loyverse_webhook_secret', 'loyverse_auto_advance', 'loyverse_queue_behaviour',
   ];
 

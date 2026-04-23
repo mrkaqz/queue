@@ -43,7 +43,8 @@ async def add_queue():
         ip = (await db.get_setting("xprinter_ip") or "").strip()
         if ip:
             port      = int(await db.get_setting("xprinter_port") or "9100")
-            shop_name = await db.get_setting("shop_name") or "My Queue"
+            shop_name = (await db.get_setting("xprinter_shop_name") or "").strip() \
+                        or await db.get_setting("shop_name") or "My Queue"
             asyncio.create_task(
                 _printer.print_ticket(entry["number"], shop_name, ip, port)
             )
@@ -221,7 +222,8 @@ async def print_ticket_endpoint(data: dict = {}):
         return {"error": "Printer IP not configured in Settings"}
 
     port      = int(await db.get_setting("xprinter_port") or "9100")
-    shop_name = await db.get_setting("shop_name") or "My Queue"
+    shop_name = (await db.get_setting("xprinter_shop_name") or "").strip() \
+                or await db.get_setting("shop_name") or "My Queue"
 
     number = data.get("number")
     if not number:

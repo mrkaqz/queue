@@ -19,6 +19,13 @@ async def print_ticket(number: int, shop_name: str, ip: str, port: int = 9100) -
     await loop.run_in_executor(None, _print_sync, number, shop_name, ip, port)
 
 
+def _safe_ascii(text: str) -> bytes:
+    """Encode text to ASCII, stripping any non-ASCII characters (e.g. Thai).
+    ESC/POS thermal printers only support ASCII/Latin — multi-byte UTF-8 causes
+    garbled output. Falls back to '?' for any unencodable character."""
+    return text.encode('ascii', errors='replace') + b'\n'
+
+
 def _print_sync(number: int, shop_name: str, ip: str, port: int) -> None:
     """Blocking ESC/POS send — called from a thread executor."""
     try:
@@ -29,7 +36,7 @@ def _print_sync(number: int, shop_name: str, ip: str, port: int) -> None:
             w(ESC + b'@')             # init printer
             w(ESC + b'a\x01')         # center alignment
             w(ESC + b'!\x08')         # bold, normal height
-            w(shop_name.encode('utf-8', errors='replace') + b'\n')
+            w(_safe_ascii(shop_name))  # ASCII only — Thai/non-Latin causes garbled output
             w(ESC + b'!\x00')         # normal
             w(b'- Queue No. -\n')
             w(ESC + b'!\x30')         # double-width + double-height + bold
