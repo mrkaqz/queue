@@ -29,6 +29,11 @@ _FONT_PATHS = [
 _font_path_cache: str | None = None
 _font_path_searched: bool = False
 
+# Font cache: (font_path, paper_dots, str_len) → ImageFont
+# The 3-digit format {:03d} means every queue number has the same char
+# count, so the same font size is reused for all tickets after the first.
+_font_cache: dict = {}
+
 
 def _get_font_path() -> str | None:
     """Return the first available TrueType bold font path (cached)."""
@@ -47,6 +52,13 @@ def _render_number_raster(number_str: str, paper_dots: int = 384) -> bytes:
     Render number_str as an ESC/POS GS v 0 raster image using a TrueType font.
     Returns empty bytes if Pillow or a suitable font is unavailable
     (caller falls back to bitmap scaling).
+
+    Performance notes
+    -----------------
+    • Font size is computed once and cached — subsequent tickets skip the
+      size-search loop entirely.
+    • Pixel packing uses PIL's native tobytes() (C-level) instead of a
+      Python triple-loop — ~100× faster, negligible overhead on any ticket.
     """
     try:
         from PIL import Image, ImageDraw, ImageFont
@@ -57,55 +69,54 @@ def _render_number_raster(number_str: str, paper_dots: int = 384) -> bytes:
     if font_path is None:
         return b""
 
-    # Find the largest font size whose rendered width fits in ~88% of paper
-    TARGET_W = int(paper_dots * 0.88)
-    chosen_font = None
-    for size in range(260, 20, -4):
-        try:
-            f = ImageFont.truetype(font_path, size)
-        except OSError:
-            continue
-        # Measure on a temporary canvas
-        probe = Image.new("L", (paper_dots * 6, 1000), 255)
-        bb = ImageDraw.Draw(probe).textbbox((0, 0), number_str, font=f)
-        if (bb[2] - bb[0]) <= TARGET_W:
-            chosen_font = f
-            break
+    # Cache key: same paper width + same string length → same font size
+    cache_key = (font_path, paper_dots, len(number_str))
+    chosen_font = _font_cache.get(cache_key)
 
     if chosen_font is None:
-        return b""
+        # First ticket: find the largest size that fits ~88% of paper width
+        TARGET_W = int(paper_dots * 0.88)
+        probe_canvas = Image.new("L", (paper_dots * 4, 600), 255)
+        probe_draw = ImageDraw.Draw(probe_canvas)
+        for size in range(260, 20, -4):
+            try:
+                f = ImageFont.truetype(font_path, size)
+            except OSError:
+                continue
+            bb = probe_draw.textbbox((0, 0), number_str, font=f)
+            if (bb[2] - bb[0]) <= TARGET_W:
+                chosen_font = f
+                break
+        if chosen_font is None:
+            return b""
+        _font_cache[cache_key] = chosen_font
 
-    # Measure final bounding box
-    probe = Image.new("L", (paper_dots * 6, 1000), 255)
+    # Measure final bounding box with the cached font
+    probe = Image.new("L", (paper_dots * 2, 600), 255)
     bb = ImageDraw.Draw(probe).textbbox((0, 0), number_str, font=chosen_font)
     text_w = bb[2] - bb[0]
     text_h = bb[3] - bb[1]
 
-    # Render grayscale (anti-aliased) then threshold to 1-bit
+    # Render grayscale (anti-aliased) then threshold to 1-bit.
+    # Invert so dark (text) pixels become 255 in mode '1' → bit=1 in tobytes()
+    # ESC/POS GS v 0: bit=1 = print a black dot ✓
     PAD = 18
     img_gray = Image.new("L", (paper_dots, text_h + PAD * 2), 255)
     x = (paper_dots - text_w) // 2 - bb[0]
     y = PAD - bb[1]
     ImageDraw.Draw(img_gray).text((x, y), number_str, font=chosen_font, fill=0)
-    img = img_gray.point(lambda p: 0 if p < 128 else 255, "1")
+    img = img_gray.point(lambda p: 255 if p < 128 else 0, "1")
 
-    # Pack pixels: MSB-first, 1 = black dot
-    bpl = paper_dots // 8   # bytes per raster line
-    raw = bytearray()
-    for row in range(img.height):
-        for col_byte in range(bpl):
-            byte = 0
-            for bit in range(8):
-                col = col_byte * 8 + bit
-                if col < paper_dots and img.getpixel((col, row)) == 0:
-                    byte |= 0x80 >> bit
-            raw.append(byte)
+    # PIL '1' tobytes(): packs 8 pixels/byte MSB-first; nonzero pixel → bit=1
+    # 384 px / 8 = 48 bytes/row exactly → no padding, tobytes() is the raw bits
+    bpl = paper_dots // 8
+    raw = img.tobytes()
 
     # GS v 0 command: GS v 0 m xL xH yL yH [data]
     return (
         b"\x1d\x76\x30\x00"                      # GS v 0, m=0 (normal density)
         + struct.pack("<HH", bpl, img.height)
-        + bytes(raw)
+        + raw
     )
 
 
