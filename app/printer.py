@@ -159,13 +159,13 @@ def _print_sync(number: int, shop_name: str, ip: str, port: int,
                 w(b"\n")
                 w(b"- Queue No. -\n")
                 w(b"\n")
-                raster = _render_number_raster(f"{number:03d}")
+                raster = _render_number_raster(f"{number}")
                 if raster:
                     w(raster)                  # smooth TrueType image
                 else:
                     # Pillow/font not available — fall back to bitmap scale
                     w(GS  + b"!\x55")          # 6× height × 6× width
-                    w(f"{number:03d}\n".encode())
+                    w(f"{number}\n".encode())
                     w(GS  + b"!\x00")
                 w(b"\n")
                 w(local_now.strftime("%d/%m/%Y %H:%M\n").encode())
@@ -177,7 +177,7 @@ def _print_sync(number: int, shop_name: str, ip: str, port: int,
                 w(ESC + b"!\x00")              # normal
                 w(b"- Queue No. -\n")
                 w(ESC + b"!\x30")              # double-width + double-height
-                w(f"{number:03d}\n".encode())
+                w(f"{number}\n".encode())
                 w(ESC + b"!\x00")              # normal
                 w(local_now.strftime("%d/%m/%Y %H:%M\n").encode())
 
