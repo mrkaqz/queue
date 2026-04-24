@@ -69,8 +69,11 @@ def _render_number_raster(number_str: str, paper_dots: int = 384) -> bytes:
     if font_path is None:
         return b""
 
-    # Cache key: same paper width + same string length → same font size
-    cache_key = (font_path, paper_dots, len(number_str))
+    # Always size the font to fit "999" (the widest 3-digit number, which is
+    # also the maximum queue number). This keeps "1", "24", and "999" all at
+    # the same physical height — only the width of the numeral differs.
+    _REF = "999"
+    cache_key = (font_path, paper_dots, _REF)
     chosen_font = _font_cache.get(cache_key)
 
     if chosen_font is None:
@@ -83,7 +86,7 @@ def _render_number_raster(number_str: str, paper_dots: int = 384) -> bytes:
                 f = ImageFont.truetype(font_path, size)
             except OSError:
                 continue
-            bb = probe_draw.textbbox((0, 0), number_str, font=f)
+            bb = probe_draw.textbbox((0, 0), _REF, font=f)
             if (bb[2] - bb[0]) <= TARGET_W:
                 chosen_font = f
                 break
@@ -91,7 +94,7 @@ def _render_number_raster(number_str: str, paper_dots: int = 384) -> bytes:
             return b""
         _font_cache[cache_key] = chosen_font
 
-    # Measure final bounding box with the cached font
+    # Measure the actual number at the fixed font size
     probe = Image.new("L", (paper_dots * 2, 600), 255)
     bb = ImageDraw.Draw(probe).textbbox((0, 0), number_str, font=chosen_font)
     text_w = bb[2] - bb[0]
