@@ -192,6 +192,7 @@ async def websocket_endpoint(ws: WebSocket):
             "shop_logo":            settings.get("shop_logo", ""),
             "server_utc":           time_sync.now_utc().strftime("%Y-%m-%dT%H:%M:%SZ"),
             "timezone":             settings.get("timezone", "0"),
+            "announcement_language":settings.get("announcement_language", "th")
         }))
         while True:
             await ws.receive_text()  # keep alive; clients don't send messages
