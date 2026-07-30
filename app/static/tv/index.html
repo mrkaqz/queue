@@ -296,9 +296,7 @@
   <!-- Left: big serving number -->
   <div id="current-card">
     <div id="serving-label">
-      <span>กำลังให้บริการ</span>
-      <span class="label-sep">·</span>
-      <span>NOW SERVING</span>
+      <span data-i18n="tv.now_serving"></span>
     </div>
     <div id="current-number">—</div>
   </div>
@@ -306,21 +304,21 @@
   <!-- Right: sidebar -->
   <div id="sidebar">
     <div class="info-block">
-      <div class="info-label">ถัดไป · NEXT</div>
+      <div class="info-label" data-i18n="tv.next"></div>
       <div class="info-value" id="next-number">—</div>
     </div>
     <div class="info-block">
-      <div class="info-label">รอคิว · WAITING</div>
+      <div class="info-label" data-i18n="tv.waiting"></div>
       <div class="info-value" id="waiting-count">0</div>
     </div>
     <div id="qr-wrap">
-      <div id="qr-label">สแกนเพื่อติดตามคิว · Scan to track</div>
+      <div id="qr-label" data-i18n="tv.scan_to_track"></div>
       <div id="qr-container"></div>
     </div>
   </div>
 </div>
 
-<div id="audio-unlock" class="hidden">🔊 แตะเพื่อเปิดเสียง · Tap to enable sound</div>
+<div id="audio-unlock" class="hidden">🔊 <span data-i18n="tv.tap_to_enable_sound"></span></div>
 
 <div id="ticker-wrap" class="hidden">
   <span id="ticker-inner"></span>
@@ -328,7 +326,51 @@
 
 <!-- QR code library (MIT) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    const translations = [
+    {
+      lang: 'en',
+      values: {
+        'tv.now_serving': 'NOW SERVING',
+        'tv.next': 'NEXT',
+        'tv.waiting': 'WAITING',
+        'tv.scan_to_track': 'Scan to track',
+        'tv.tap_to_enable_sound': 'Tap to enable sound',
+      },
+    },
+    {
+      lang: 'th',
+      values: {
+        'tv.now_serving': 'กำลังให้บริการ',
+        'tv.next': 'ถัดไป',
+        'tv.waiting': 'รอคิว',
+        'tv.scan_to_track': 'สแกนเพื่อติดตามคิว',
+        'tv.tap_to_enable_sound': 'แตะเพื่อเปิดเสียง',
+      },
+    },
+        {
+      lang: 'th+en',
+      values: {
+        'tv.now_serving': 'กำลังให้บริการ . NOW SERVING',
+        'tv.next': 'ถัดไป . NEXT',
+        'tv.waiting': 'รอคิว . WAITING',
+        'tv.scan_to_track': 'สแกนเพื่อติดตามคิว . Scan to track',
+        'tv.tap_to_enable_sound': 'แตะเพื่อเปิดเสียง . Tap to enable sound',
+      },
+    },
+  ];
 
+  function applyTranslations(lang) {
+    const selected = translations.find(entry => entry.lang === lang) || translations[0];
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (selected.values[key]) {
+        el.textContent = selected.values[key];
+      }
+    });
+  }
+</script>
 <script>
   const currentEl  = document.getElementById('current-number');
   const nextEl     = document.getElementById('next-number');
@@ -503,6 +545,7 @@
           serverDrift = Date.parse(msg.server_utc) - Date.now();
         }
         tvTzOffset = parseFloat(msg.timezone ?? '0') || 0;
+        applyTranslations(msg.announcement_language);
         return;
       }
 
