@@ -64,6 +64,26 @@
     #conn-badge.connected    { background: #166534; color: #bbf7d0; }
     #conn-badge.disconnected { background: #7f1d1d; color: #fecaca; }
 
+    #printer-badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    #printer-badge.online   { background: #166534; color: #bbf7d0; }
+    #printer-badge.offline  { background: #7f1d1d; color: #fecaca; }
+
+    #esp32-badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    #esp32-badge.online   { background: #166534; color: #bbf7d0; }
+    #esp32-badge.offline  { background: #7f1d1d; color: #fecaca; }
+
     /* Main layout */
     main { max-width: 960px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 24px; }
 
@@ -345,6 +365,8 @@
     <div class="value" id="waiting-val">0</div>
   </div>
   <div id="conn-badge" class="disconnected">Offline</div>
+  <div id="printer-badge" style="display:none">Printer</div>
+  <div id="esp32-badge" style="display:none">Button</div>
 </div>
 
 <main>
@@ -539,7 +561,9 @@
   const currentEl  = document.getElementById('current-val');
   const nextEl     = document.getElementById('next-val');
   const waitingEl  = document.getElementById('waiting-val');
-  const connBadge  = document.getElementById('conn-badge');
+  const connBadge    = document.getElementById('conn-badge');
+  const printerBadge = document.getElementById('printer-badge');
+  const esp32Badge   = document.getElementById('esp32-badge');
   const shopNameEl = document.getElementById('nav-shop-name');
   const tbody      = document.getElementById('queue-body');
   const emptyRow   = document.getElementById('empty-row');
@@ -708,6 +732,48 @@
     } catch(e) { showToast('Print error: ' + e.message); }
   }
 
+  // ── Printer status polling ────────────────────────────────────────────────
+  async function checkPrinterStatus() {
+    try {
+      const r = await fetch('/api/queue/printer-status', { headers: authHeaders() });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.status === 'disabled' || d.status === 'not_configured') {
+        printerBadge.style.display = 'none';
+        return;
+      }
+      printerBadge.style.display = '';
+      if (d.status === 'online') {
+        printerBadge.textContent = '🖨 Printer Online';
+        printerBadge.className = 'online';
+      } else {
+        printerBadge.textContent = '🖨 Printer Offline';
+        printerBadge.className = 'offline';
+      }
+    } catch (_) {}
+  }
+
+  // ── ESP32 status polling ──────────────────────────────────────────────────
+  async function checkEsp32Status() {
+    try {
+      const r = await fetch('/api/queue/esp32-status', { headers: authHeaders() });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.status === 'not_configured') {
+        esp32Badge.style.display = 'none';
+        return;
+      }
+      esp32Badge.style.display = '';
+      if (d.status === 'online') {
+        esp32Badge.textContent = '🔘 Button Online';
+        esp32Badge.className = 'online';
+      } else {
+        esp32Badge.textContent = '🔘 Button Offline';
+        esp32Badge.className = 'offline';
+      }
+    } catch (_) {}
+  }
+
   // ── WebSocket ─────────────────────────────────────────────────────────────
   let ws;
   function connect() {
@@ -741,6 +807,10 @@
   // ── Init ──────────────────────────────────────────────────────────────────
   initPinInputs();
   checkAuth();
+  checkPrinterStatus();
+  setInterval(checkPrinterStatus, 15000);
+  checkEsp32Status();
+  setInterval(checkEsp32Status, 15000);
 </script>
 </body>
 </html>

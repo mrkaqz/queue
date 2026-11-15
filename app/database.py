@@ -39,6 +39,7 @@ SETTING_DEFAULTS = {
     "xprinter_enabled":           "false",   # auto-print on Add Queue
     "xprinter_shop_name":         "",        # ASCII-only name for ticket header; falls back to shop_name if empty
     "xprinter_ticket_size":       "normal",  # "normal" | "large"
+    "esp32_ip":                   "",        # IP of the physical ESP32 button controller
 }
 
 
