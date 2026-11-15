@@ -247,6 +247,8 @@ def _tcp_ping(ip: str, port: int) -> None:
     s.settimeout(2)
     try:
         s.connect((ip, port))
+    except ConnectionRefusedError:
+        pass  # device is reachable; no listener on this port still counts as online
     finally:
         s.close()
 
@@ -268,6 +270,22 @@ async def printer_status():
         return {"status": "online", "ip": ip, "port": port}
     except Exception:
         return {"status": "offline", "ip": ip, "port": port}
+
+
+@router.get("/esp32-status", dependencies=[Depends(require_auth)])
+async def esp32_status():
+    ip = (await db.get_setting("esp32_ip") or "").strip()
+    if not ip:
+        return {"status": "not_configured"}
+    loop = asyncio.get_event_loop()
+    try:
+        await asyncio.wait_for(
+            loop.run_in_executor(None, _tcp_ping, ip, 80),
+            timeout=3.0
+        )
+        return {"status": "online", "ip": ip}
+    except Exception:
+        return {"status": "offline", "ip": ip}
 
 
 @router.post("/reset", dependencies=[Depends(require_auth)])
