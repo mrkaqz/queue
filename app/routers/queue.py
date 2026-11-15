@@ -241,6 +241,35 @@ async def print_ticket_endpoint(data: dict = {}):
     return {"ok": True, "number": number}
 
 
+def _tcp_ping(ip: str, port: int) -> None:
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(2)
+    try:
+        s.connect((ip, port))
+    finally:
+        s.close()
+
+
+@router.get("/printer-status", dependencies=[Depends(require_auth)])
+async def printer_status():
+    if await db.get_setting("xprinter_enabled") != "true":
+        return {"status": "disabled"}
+    ip = (await db.get_setting("xprinter_ip") or "").strip()
+    if not ip:
+        return {"status": "not_configured"}
+    port = int(await db.get_setting("xprinter_port") or "9100")
+    loop = asyncio.get_event_loop()
+    try:
+        await asyncio.wait_for(
+            loop.run_in_executor(None, _tcp_ping, ip, port),
+            timeout=3.0
+        )
+        return {"status": "online", "ip": ip, "port": port}
+    except Exception:
+        return {"status": "offline", "ip": ip, "port": port}
+
+
 @router.post("/reset", dependencies=[Depends(require_auth)])
 async def reset():
     await db.reset_queue()
